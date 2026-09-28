@@ -271,9 +271,9 @@ function selectSlot(x){const g=slotGeom();const i=Math.floor((x-g.x0)/(g.slotW+4
 
 /* ---------- cows & milk ---------- */
 function spawnCow(){
-  const lv=S.level,dir=Math.random()<0.5?1:-1,z=rand(4,14),half=(W/2)*z/F;
+  const lv=S.level,dir=Math.random()<0.5?1:-1,z=rand(4,12),half=(W/2)*z/F;
   const spots=[];for(let i=0;i<4;i++)spots.push([rand(-0.6,0.5),rand(-0.3,0.3),rand(0.12,0.24),rand(0.1,0.2)]);
-  const c={x:-dir*(half+1.2),y0:rand(0.3,1.0),y:0,z,dir,vx:dir*(1.2+0.18*(lv-1))*rand(0.85,1.15),
+  const c={x:-dir*(half+1.2),y0:rand(0.2,0.7),y:0,z,dir,vx:dir*(1.0+0.15*(lv-1))*rand(0.85,1.15),
     hp:1+0.4*(lv-1),spots,fire:rand(2.5,4.5),charge:0,bob:rand(0,TAU),t:0,dead:false,vy:0,rot:0,hitT:0,gone:false};
   c.maxhp=c.hp;c.y=c.y0;S.cows.push(c);
 }
@@ -305,9 +305,9 @@ function throwRock(v,fallbackAngle){
   const q=Math.exp(-Math.pow((v-IDEAL_V)/1.1,2));
   const pw=clamp(v/IDEAL_V,0.35,1.5);
   const ang=(USE_TILT&&S.tilt.ok?S.aim:fallbackAngle)*Math.PI/180;
-  const sp=4.5+3*pw;
+  const sp=6+4*pw;
   let skipsLeft=Math.round(1+10*rock.pot*q);if(q<0.2)skipsLeft=0;
-  S.rocks.push({rock,x:S.camX,y:0.5,z:1.4,vx:Math.sin(ang)*sp,vz:Math.cos(ang)*sp,vy:1.6+0.8*Math.min(pw,1),skips:0,skipsLeft,rot:0,spin:rand(8,14),done:false,q});
+  S.rocks.push({rock,x:S.camX,y:0.5,z:1.4,vx:Math.sin(ang)*sp,vz:Math.cos(ang)*sp,vy:1.2+0.6*Math.min(pw,1),skips:0,skipsLeft,rot:0,spin:rand(20,32),done:false,q});
   SFX.throw();S.lastThrowV=v;
   let fb,col='#fff';
   if(v<1.2){fb='TOO GENTLE';col='#9fd3ff';}else if(v>2.9){fb='TOO HARD!';col='#ff9f9f';}else if(q>0.88){fb='PERFECT FLICK!';col='#ffe66d';}else fb='NICE FLICK';
@@ -377,7 +377,9 @@ function updateRocks(dt){
     if(r.z>45||r.y<-1)r.done=true;
     if(!r.done)for(const c of S.cows){
       if(c.dead)continue;
-      if(Math.abs(c.z-r.z)<1.3&&Math.abs(c.x-r.x)<0.95&&Math.abs(c.y-r.y)<0.6){hitCow(c,r);break;}
+      if(Math.abs(c.z-r.z)>2.2)continue;
+      const pc=project(c.x,c.y,c.z),pr=project(r.x,r.y,r.z);
+      if(Math.abs(pc.sx-pr.sx)<1.0*pc.s&&Math.abs(pc.sy-pr.sy)<0.75*pc.s){hitCow(c,r);break;}
     }
   }
   S.rocks=S.rocks.filter(r=>!r.done);
@@ -497,6 +499,13 @@ function drawHeldRock(t){
   const hp=heldRockPos(),zr=throwZoneR();
   ctx.setLineDash([4,7]);ctx.lineDashOffset=-t*20;ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=2;
   ctx.beginPath();ctx.arc(hp.x,hp.y,zr,0,TAU);ctx.stroke();ctx.setLineDash([]);
+  if(ptr&&ptr.aim!==undefined){
+    const a=ptr.aim*Math.PI/180;
+    ctx.setLineDash([6,8]);ctx.lineDashOffset=-t*40;ctx.strokeStyle='rgba(255,230,109,.75)';ctx.lineWidth=2;ctx.beginPath();
+    ctx.moveTo(hp.x,hp.y);
+    for(let d=1;d<=24;d+=2){const q=project(S.camX+Math.sin(a)*d,0,1.4+Math.cos(a)*d);ctx.lineTo(q.sx,q.sy);}
+    ctx.stroke();ctx.setLineDash([]);
+  }
   const rock=S.pocket[S.sel],rr=16+rock.size*12;
   ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(hp.x+3,hp.y+rr*0.6,rr*rock.aspect*0.9,rr*0.45,0,0,TAU);ctx.fill();
   drawRock(hp.x,hp.y+Math.sin(t*3)*2,rr,rock,rock.rot+Math.sin(t)*0.1);
@@ -587,6 +596,8 @@ canvas.addEventListener('pointerdown',e=>{
 canvas.addEventListener('pointermove',e=>{
   if(!ptr||e.pointerId!==ptr.id)return;const p=localPos(e);
   ptr.hist.push({x:p.x,y:p.y,t:performance.now()});if(ptr.hist.length>40)ptr.hist.shift();
+  const dx=p.x-ptr.x0,dy=p.y-ptr.y0,hp=heldRockPos();
+  if(dy<-16&&-dy>=Math.abs(dx)&&Math.hypot(ptr.x0-hp.x,ptr.y0-hp.y)<throwZoneR())ptr.aim=clamp(Math.atan2(dx,-dy)*180/Math.PI,-45,45);else delete ptr.aim;
 });
 function endPtr(e){
   if(!ptr||e.pointerId!==ptr.id)return;
