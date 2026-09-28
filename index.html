@@ -218,31 +218,68 @@ function noiseBand(dur,vol,f0,f1,q,att,tremHz){
 }
 function moo(base,dur,vol,sad){
   if(!AC||muted)return;
-  const t=AC.currentTime,f=base*rand(0.88,1.12);
-  const o1=AC.createOscillator(),o2=AC.createOscillator();o1.type='sawtooth';o2.type='square';
-  const pts=sad?[[0,f*1.05],[0.25,f*0.95],[0.7,f*0.62],[1,f*0.5]]:[[0,f*0.85],[0.18,f*1.12],[0.55,f*0.92],[1,f*0.78]];
-  for(const o of [o1,o2]){o.frequency.setValueAtTime(pts[0][1]*(o===o2?0.5:1),t);for(const [k,v] of pts.slice(1))o.frequency.exponentialRampToValueAtTime(v*(o===o2?0.5:1),t+k*dur);}
-  const vib=AC.createOscillator(),vg=AC.createGain();vib.frequency.value=5.5;vg.gain.value=f*0.035;vib.connect(vg);vg.connect(o1.frequency);vg.connect(o2.frequency);
-  const o2g=AC.createGain();o2g.gain.value=0.45;
-  const lp=AC.createBiquadFilter();lp.type='lowpass';lp.Q.value=4;
-  lp.frequency.setValueAtTime(220,t);lp.frequency.exponentialRampToValueAtTime(sad?700:950,t+dur*0.25);lp.frequency.exponentialRampToValueAtTime(sad?300:520,t+dur);
-  const fm=AC.createBiquadFilter();fm.type='peaking';fm.frequency.value=780;fm.Q.value=3;fm.gain.value=9;
-  const g=AC.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.09);g.gain.setValueAtTime(vol,t+dur*0.55);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  o1.connect(lp);o2.connect(o2g).connect(lp);lp.connect(fm).connect(g).connect(AC.destination);
-  vib.start(t);o1.start(t);o2.start(t);vib.stop(t+dur+0.05);o1.stop(t+dur+0.05);o2.stop(t+dur+0.05);
+  const t=AC.currentTime,f=base*rand(0.9,1.1),tM=sad?0.16:0.22;
+  const stopAt=t+dur+0.1;
+  const mk=(type,det)=>{const o=AC.createOscillator();o.type=type;if(det)o.detune.value=det;return o;};
+  const o1=mk('sawtooth',0),o2=mk('sawtooth',9),sub=mk('square',0);
+  const pts=sad?[[0,1.0],[0.2,1.06],[0.5,0.82],[0.8,0.62],[1,0.5]]:[[0,0.9],[0.15,0.93],[0.35,1.28],[0.6,1.18],[0.85,0.96],[1,0.8]];
+  for(const [o,m] of [[o1,1],[o2,1],[sub,0.5]]){
+    o.frequency.setValueAtTime(f*pts[0][1]*m,t);
+    for(const [k,v] of pts.slice(1))o.frequency.linearRampToValueAtTime(f*v*m,t+k*dur);
+  }
+  const vib=AC.createOscillator(),vg=AC.createGain();vib.frequency.value=6;vg.gain.setValueAtTime(0,t);vg.gain.linearRampToValueAtTime(f*0.04,t+dur*0.45);
+  vib.connect(vg);vg.connect(o1.frequency);vg.connect(o2.frequency);
+  const src=AC.createGain();src.gain.value=0.5;o1.connect(src);o2.connect(src);
+  const subg=AC.createGain();subg.gain.value=0.3;sub.connect(subg).connect(src);
+  const hum=AC.createBiquadFilter();hum.type='lowpass';hum.frequency.value=260;hum.Q.value=1.2;
+  const humG=AC.createGain();humG.gain.setValueAtTime(0.0001,t);humG.gain.exponentialRampToValueAtTime(0.45,t+0.05);humG.gain.setValueAtTime(0.45,t+tM);humG.gain.exponentialRampToValueAtTime(0.08,t+tM+0.03);
+  src.connect(hum).connect(humG);
+  const vowel=AC.createGain();vowel.gain.setValueAtTime(0.0001,t);vowel.gain.setValueAtTime(0.0001,t+tM-0.005);vowel.gain.exponentialRampToValueAtTime(1,t+tM+0.035);vowel.gain.setValueAtTime(1,t+dur*0.7);vowel.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  const formants=sad?[[380,8,1.0,300],[760,9,0.55,620],[2300,10,0.15,2000]]:[[420,8,1.0,320],[820,9,0.6,650],[2500,10,0.18,2200]];
+  for(const [fc,q,g,fend] of formants){
+    const bp=AC.createBiquadFilter();bp.type='bandpass';bp.Q.value=q;
+    bp.frequency.setValueAtTime(fc*0.85,t);bp.frequency.linearRampToValueAtTime(fc*1.25,t+dur*0.45);bp.frequency.linearRampToValueAtTime(fend,t+dur);
+    const bg=AC.createGain();bg.gain.value=g*6;
+    src.connect(bp).connect(bg).connect(vowel);
+  }
+  const master=AC.createGain();master.gain.value=vol;
+  humG.connect(master);vowel.connect(master);master.connect(AC.destination);
+  for(const o of [o1,o2,sub,vib]){o.start(t);o.stop(stopAt);}
+}
+function spray(vol){
+  if(!AC||muted)return;
+  const t=AC.currentTime,sr=AC.sampleRate,dur=0.55,n=Math.floor(sr*dur);
+  const buf=AC.createBuffer(1,n,sr),d=buf.getChannelData(0);
+  let tv=0;
+  for(let i=0;i<n;i++){
+    const x=i/n;tv+=((Math.random()*2-1)-tv)*0.015;
+    const env=x<0.02?x/0.02:x<0.75?1-x*0.35:Math.max(0,(1-x)/0.25*0.74);
+    d[i]=(Math.random()*2-1)*env*(0.55+0.45*Math.max(-1,Math.min(1,tv*4)));
+  }
+  const src=AC.createBufferSource();src.buffer=buf;
+  const hp=AC.createBiquadFilter();hp.type='highpass';hp.frequency.value=1800;
+  const bp=AC.createBiquadFilter();bp.type='bandpass';bp.Q.value=0.7;bp.frequency.setValueAtTime(5200,t);bp.frequency.exponentialRampToValueAtTime(3600,t+dur);
+  const g=AC.createGain();g.gain.value=vol;
+  src.connect(hp).connect(bp).connect(g).connect(AC.destination);src.start(t);
+  const body=AC.createBufferSource();body.buffer=buf;
+  const bb=AC.createBiquadFilter();bb.type='bandpass';bb.Q.value=1.1;bb.frequency.value=420;
+  const bg=AC.createGain();bg.gain.value=vol*0.5;
+  body.connect(bb).connect(bg).connect(AC.destination);body.start(t);
+  const pn=Math.floor(sr*0.035),pb=AC.createBuffer(1,pn,sr),pd=pb.getChannelData(0);
+  for(let i=0;i<pn;i++)pd[i]=(Math.random()*2-1)*(1-i/pn);
+  const pop=AC.createBufferSource();pop.buffer=pb;
+  const pf=AC.createBiquadFilter();pf.type='bandpass';pf.Q.value=1.5;pf.frequency.value=1300;
+  const pg=AC.createGain();pg.gain.value=vol*1.6;
+  pop.connect(pf).connect(pg).connect(AC.destination);pop.start(t);
 }
 const SFX={
   throw(){noise(0.25,0.2,2500);},
   skip(){tone(900,1400,0.08,'sine',0.14);},
   plunk(){tone(300,110,0.25,'sine',0.2);noise(0.12,0.1,900);},
   hit(){tone(220,80,0.2,'square',0.14);noise(0.1,0.15,800);},
-  moo(){moo(125,0.85,0.2,false);},
-  mooDown(){moo(120,1.1,0.2,true);},
-  spray(){
-    tone(380,1300,0.09,'sine',0.18);
-    noiseBand(0.45,0.7,2600,500,2.2,0.03,28);
-    noiseBand(0.3,0.3,900,300,1.2,0.05);
-  },
+  moo(){moo(120,1.0,0.5,false);},
+  mooDown(){moo(115,1.25,0.5,true);},
+  spray(){spray(0.6);},
   splat(){
     noiseBand(0.22,0.5,1400,250,0.8,0.005);
     tone(150,45,0.28,'triangle',0.3);
@@ -395,8 +432,8 @@ function updateCows(dt,canFire){
     if(c.x*c.dir>half+2.5)c.gone=true;
     const onScreen=Math.abs(c.x-S.camX)<half*0.9;
     if(onScreen&&canFire){
-      const wasCharging=c.fire<0.6;c.fire-=dt;c.charge=c.fire<0.6?1-c.fire/0.6:0;
-      if(!wasCharging&&c.fire<0.6){const p=project(c.x,c.y,c.z);msg('MOO!',p.sx,p.sy-0.9*p.s,'#fff',9,0.7);SFX.moo();}
+      const wasCharging=c.fire<1.0;c.fire-=dt;c.charge=c.fire<1.0?1-c.fire/1.0:0;
+      if(!wasCharging&&c.fire<1.0){const p=project(c.x,c.y,c.z);msg('MOO!',p.sx,p.sy-0.9*p.s,'#fff',9,0.7);SFX.moo();}
       if(c.fire<=0){fireBlast(c);c.fire=Math.max(2.0,5.0-0.25*(S.level-1))*rand(0.8,1.25);c.charge=0;}
     }
   }
