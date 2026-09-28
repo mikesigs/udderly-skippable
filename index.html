@@ -278,6 +278,7 @@ const SFX={
   plunk(){tone(300,110,0.25,'sine',0.2);noise(0.12,0.1,900);},
   hit(){tone(220,80,0.2,'square',0.14);noise(0.1,0.15,800);},
   moo(){moo(120,1.0,0.5,false);},
+  mooHurt(){moo(150,0.55,0.45,false);},
   mooDown(){moo(115,1.25,0.5,true);},
   spray(){spray(0.6);},
   splat(){
@@ -383,7 +384,7 @@ function milkHit(){
 }
 function hitCow(c,r){
   const dmg=0.6+r.rock.weight*0.8;c.hp-=dmg;c.hitT=0.3;
-  const p=50+15*r.skips+10*(S.level-1);S.score+=p;SFX.hit();
+  const p=50+15*r.skips+10*(S.level-1);S.score+=p;SFX.hit();if(c.hp>0)SFX.mooHurt();
   const pr=project(c.x,c.y,c.z);msg('+'+p,pr.sx,pr.sy-30,'#ffe66d',11);
   r.vz*=-0.15;r.vx*=0.3;r.vy=1.5;r.skipsLeft=0;
   if(c.hp<=0){c.dead=true;c.vy=1.5;S.kills++;const b=200*S.level;S.score+=b;msg('COW DOWN! +'+b,pr.sx,pr.sy-52,'#ff9fc0',11,1.6);SFX.mooDown();}
@@ -432,8 +433,7 @@ function updateCows(dt,canFire){
     if(c.x*c.dir>half+2.5)c.gone=true;
     const onScreen=Math.abs(c.x-S.camX)<half*0.9;
     if(onScreen&&canFire){
-      const wasCharging=c.fire<1.0;c.fire-=dt;c.charge=c.fire<1.0?1-c.fire/1.0:0;
-      if(!wasCharging&&c.fire<1.0){const p=project(c.x,c.y,c.z);msg('MOO!',p.sx,p.sy-0.9*p.s,'#fff',9,0.7);SFX.moo();}
+      c.fire-=dt;c.charge=c.fire<1.0?1-c.fire/1.0:0;
       if(c.fire<=0){fireBlast(c);c.fire=Math.max(2.0,5.0-0.25*(S.level-1))*rand(0.8,1.25);c.charge=0;}
     }
   }
