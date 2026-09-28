@@ -203,13 +203,52 @@ function noise(dur,vol,freq){
   const g=AC.createGain();g.gain.value=vol||0.15;
   src.connect(f).connect(g).connect(AC.destination);src.start();
 }
+function noiseBand(dur,vol,f0,f1,q,att,tremHz){
+  if(!AC||muted)return;
+  const t=AC.currentTime,n=Math.floor(AC.sampleRate*dur),buf=AC.createBuffer(1,n,AC.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
+  const src=AC.createBufferSource();src.buffer=buf;
+  const bp=AC.createBiquadFilter();bp.type='bandpass';bp.Q.value=q||1.5;
+  bp.frequency.setValueAtTime(f0,t);bp.frequency.exponentialRampToValueAtTime(Math.max(40,f1),t+dur);
+  const g=AC.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+(att||0.01));g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  src.connect(bp);
+  if(tremHz){const tg=AC.createGain();tg.gain.value=0.5;const lfo=AC.createOscillator();lfo.frequency.value=tremHz;const lg=AC.createGain();lg.gain.value=0.5;lfo.connect(lg).connect(tg.gain);lfo.start(t);lfo.stop(t+dur);bp.connect(tg).connect(g);}
+  else bp.connect(g);
+  g.connect(AC.destination);src.start(t);src.stop(t+dur+0.02);
+}
+function moo(base,dur,vol,sad){
+  if(!AC||muted)return;
+  const t=AC.currentTime,f=base*rand(0.88,1.12);
+  const o1=AC.createOscillator(),o2=AC.createOscillator();o1.type='sawtooth';o2.type='square';
+  const pts=sad?[[0,f*1.05],[0.25,f*0.95],[0.7,f*0.62],[1,f*0.5]]:[[0,f*0.85],[0.18,f*1.12],[0.55,f*0.92],[1,f*0.78]];
+  for(const o of [o1,o2]){o.frequency.setValueAtTime(pts[0][1]*(o===o2?0.5:1),t);for(const [k,v] of pts.slice(1))o.frequency.exponentialRampToValueAtTime(v*(o===o2?0.5:1),t+k*dur);}
+  const vib=AC.createOscillator(),vg=AC.createGain();vib.frequency.value=5.5;vg.gain.value=f*0.035;vib.connect(vg);vg.connect(o1.frequency);vg.connect(o2.frequency);
+  const o2g=AC.createGain();o2g.gain.value=0.45;
+  const lp=AC.createBiquadFilter();lp.type='lowpass';lp.Q.value=4;
+  lp.frequency.setValueAtTime(220,t);lp.frequency.exponentialRampToValueAtTime(sad?700:950,t+dur*0.25);lp.frequency.exponentialRampToValueAtTime(sad?300:520,t+dur);
+  const fm=AC.createBiquadFilter();fm.type='peaking';fm.frequency.value=780;fm.Q.value=3;fm.gain.value=9;
+  const g=AC.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.09);g.gain.setValueAtTime(vol,t+dur*0.55);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o1.connect(lp);o2.connect(o2g).connect(lp);lp.connect(fm).connect(g).connect(AC.destination);
+  vib.start(t);o1.start(t);o2.start(t);vib.stop(t+dur+0.05);o1.stop(t+dur+0.05);o2.stop(t+dur+0.05);
+}
 const SFX={
   throw(){noise(0.25,0.2,2500);},
   skip(){tone(900,1400,0.08,'sine',0.14);},
   plunk(){tone(300,110,0.25,'sine',0.2);noise(0.12,0.1,900);},
   hit(){tone(220,80,0.2,'square',0.14);noise(0.1,0.15,800);},
-  moo(){tone(190,115,0.6,'sawtooth',0.16);},
-  splat(){noise(0.35,0.3,600);tone(120,60,0.3,'triangle',0.2);},
+  moo(){moo(125,0.85,0.2,false);},
+  mooDown(){moo(120,1.1,0.2,true);},
+  spray(){
+    tone(380,1300,0.09,'sine',0.18);
+    noiseBand(0.45,0.7,2600,500,2.2,0.03,28);
+    noiseBand(0.3,0.3,900,300,1.2,0.05);
+  },
+  splat(){
+    noiseBand(0.22,0.5,1400,250,0.8,0.005);
+    tone(150,45,0.28,'triangle',0.3);
+    noise(0.35,0.25,500);
+    for(let i=0;i<4;i++)setTimeout(()=>tone(rand(700,1500),rand(300,600),0.07,'sine',0.09),120+i*90+Math.random()*60);
+  },
   pick(){tone(520,760,0.06,'square',0.07);},
   dodge(){noise(0.15,0.1,4000);},
   wave(){tone(440,880,0.15,'square',0.1);setTimeout(()=>tone(660,1320,0.2,'square',0.1),150);},
@@ -297,8 +336,7 @@ function spawnCow(){
 function fireBlast(c){
   const lv=S.level;
   S.blasts.push({x0:c.x,y0:Math.max(0.1,c.y-0.25),z0:c.z,tx:S.camTarget,t:0,dur:Math.max(1.2,2.5-0.08*(lv-1)),x:c.x,y:c.y,z:c.z,done:false});
-  const p=project(c.x,c.y,c.z);msg('MOO!',p.sx,p.sy-0.9*p.s,'#fff',9,0.7);
-  SFX.moo();
+  SFX.spray();
 }
 function milkHit(){
   const dmg=Math.min(20,8+1*(S.level-1));
@@ -311,7 +349,7 @@ function hitCow(c,r){
   const p=50+15*r.skips+10*(S.level-1);S.score+=p;SFX.hit();
   const pr=project(c.x,c.y,c.z);msg('+'+p,pr.sx,pr.sy-30,'#ffe66d',11);
   r.vz*=-0.15;r.vx*=0.3;r.vy=1.5;r.skipsLeft=0;
-  if(c.hp<=0){c.dead=true;c.vy=1.5;S.kills++;const b=200*S.level;S.score+=b;msg('COW DOWN! +'+b,pr.sx,pr.sy-52,'#ff9fc0',11,1.6);SFX.moo();}
+  if(c.hp<=0){c.dead=true;c.vy=1.5;S.kills++;const b=200*S.level;S.score+=b;msg('COW DOWN! +'+b,pr.sx,pr.sy-52,'#ff9fc0',11,1.6);SFX.mooDown();}
 }
 
 /* ---------- throwing & dodging ---------- */
@@ -357,7 +395,8 @@ function updateCows(dt,canFire){
     if(c.x*c.dir>half+2.5)c.gone=true;
     const onScreen=Math.abs(c.x-S.camX)<half*0.9;
     if(onScreen&&canFire){
-      c.fire-=dt;c.charge=c.fire<0.6?1-c.fire/0.6:0;
+      const wasCharging=c.fire<0.6;c.fire-=dt;c.charge=c.fire<0.6?1-c.fire/0.6:0;
+      if(!wasCharging&&c.fire<0.6){const p=project(c.x,c.y,c.z);msg('MOO!',p.sx,p.sy-0.9*p.s,'#fff',9,0.7);SFX.moo();}
       if(c.fire<=0){fireBlast(c);c.fire=Math.max(2.0,5.0-0.25*(S.level-1))*rand(0.8,1.25);c.charge=0;}
     }
   }
