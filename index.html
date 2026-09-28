@@ -49,6 +49,13 @@ input[type=text]:focus{outline:3px solid var(--gold);}
 .board li .r{color:#9fd3ff;}
 .board li .w{font-size:8px;color:#b8c7d6;}
 .empty{font-size:13px;color:#b8c7d6;margin-bottom:14px;}
+.lab{list-style:none;padding:0;margin:0 0 14px;display:grid;gap:6px;}
+.lab li{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding-block:8px;padding-inline:10px;background:rgba(255,255,255,.06);border:2px solid transparent;cursor:pointer;}
+.lab li.sel{border-color:var(--pink);background:rgba(242,140,168,.2);}
+.lab .nm{font-family:'Press Start 2P',monospace;font-size:9px;line-height:1.5;color:var(--gold);}
+.lab .ds{font-size:12px;color:#d7e2ec;line-height:1.35;margin-top:2px;}
+.lab .btn{padding-block:10px;padding-inline:12px;flex:0 0 auto;font-size:9px;}
+.lab li.sel .nm::after{content:" ✓";color:var(--pink);}
 @media (prefers-reduced-motion: reduce){.btn:active{transform:none;}}
 </style>
 </head>
@@ -72,6 +79,7 @@ input[type=text]:focus{outline:3px solid var(--gold);}
         <button id="startBtn" class="btn primary">Start</button>
         <button id="practiceBtn" class="btn">Practice</button>
         <button id="boardBtn" class="btn">High Scores</button>
+        <button id="labBtn" class="btn">Moo Lab</button>
       </div>
       <p class="note" style="margin-bottom:12px">Practice is the same beach with no cows, for working on your skips. Tap PAUSE in the corner during a game to pause or quit.</p>
       <div class="row small">
@@ -119,6 +127,17 @@ input[type=text]:focus{outline:3px solid var(--gold);}
     </div>
   </div>
 
+  <div id="lab" class="overlay" hidden>
+    <div class="card">
+      <p class="eyebrow">Prototype</p>
+      <h2>MOO LAB</h2>
+      <p class="lede" style="font-size:13px">Tap Play to hear each moo. Tap a row to make it the one the cows use when they're hit or downed.</p>
+      <ol class="lab" id="labList"></ol>
+      <div class="row"><button id="labHurtBtn" class="btn">Hit moo</button><button id="labDownBtn" class="btn">Downed moo</button></div>
+      <div class="row"><button id="labBackBtn" class="btn primary">Back</button></div>
+    </div>
+  </div>
+
   <div id="board" class="overlay" hidden>
     <div class="card">
       <p class="eyebrow">Hall of Skips</p>
@@ -149,7 +168,7 @@ let clouds=[],waves=[],speckles=[],trees=[];
 const S={
   mode:'title',score:0,li:0,level:1,kills:0,time:0,camX:0,camTarget:0,
   dodge:{dir:0,t:0},pocket:[],sel:0,beach:[],cows:[],blasts:[],rocks:[],fx:[],msgs:[],
-  shake:0,milkHit:0,spawnT:1,beachT:2,practice:false,bestChain:0,
+  shake:0,milkHit:0,spawnT:1,beachT:2,practice:false,bestChain:0,mooIdx:0,
   tilt:{ok:false,listening:false,roll:0,g0:null,invert:false},aim:0,aimRaw:0,lastThrowV:0
 };
 
@@ -180,7 +199,7 @@ function buildScenery(){
 }
 
 /* ---------- storage ---------- */
-const LS_KEY='udderly.scores.v1', LS_NAME='udderly.name';
+const LS_KEY='udderly.scores.v1', LS_NAME='udderly.name', LS_MOO='udderly.moo';
 function loadScores(){try{const v=JSON.parse(localStorage.getItem(LS_KEY)||'[]');return Array.isArray(v)?v:[];}catch(e){return [];}}
 function saveScores(list){try{localStorage.setItem(LS_KEY,JSON.stringify(list));}catch(e){}}
 
@@ -216,36 +235,54 @@ function noiseBand(dur,vol,f0,f1,q,att,tremHz){
   else bp.connect(g);
   g.connect(AC.destination);src.start(t);src.stop(t+dur+0.02);
 }
-function moo(base,dur,vol,sad){
+let PULSE_WAVE=null;
+function pulseWave(){if(PULSE_WAVE)return PULSE_WAVE;const n=48,re=new Float32Array(n),im=new Float32Array(n);for(let k=1;k<n;k++)im[k]=1/Math.pow(k,0.35);PULSE_WAVE=AC.createPeriodicWave(re,im,{disableNormalization:false});return PULSE_WAVE;}
+function driveCurve(k){const n=1024,c=new Float32Array(n);for(let i=0;i<n;i++){const x=i/(n-1)*2-1;c[i]=Math.tanh(k*x)/Math.tanh(k);}return c;}
+const CONTOUR_CLASSIC=[[0,0.9],[0.15,0.93],[0.35,1.28],[0.6,1.18],[0.85,0.96],[1,0.8]];
+const FORMANTS_OO=[[360,520,320,8,1],[700,1020,650,9,0.6],[2100,3100,2200,10,0.18]];
+const MOO_PRESETS=[
+  {name:'CLASSIC',desc:'Closed hum that opens into an "oo" vowel, pitch rises then sags.',source:'sawtooth',detune:9,sub:0.3,f0:120,dur:1.0,vol:0.5,hum:0.22,contour:CONTOUR_CLASSIC,formants:FORMANTS_OO,vib:{hz:6,depth:0.04,from:0.45}},
+  {name:'PULSE VOICE',desc:'Glottal pulse source instead of a buzz. More throat, less synth.',source:'pulse',sub:0.2,f0:110,dur:1.1,vol:0.9,hum:0.2,contour:CONTOUR_CLASSIC,formants:[[400,560,330,7,1],[800,1000,700,8,0.5],[2400,2600,2300,9,0.12]],vib:{hz:5.5,depth:0.035,from:0.4}},
+  {name:'BULL BELLOW',desc:'Deep, slow and long with a rough throat.',source:'sawtooth',detune:6,sub:0.5,f0:72,dur:1.6,vol:0.4,hum:0.25,contour:[[0,0.95],[0.3,1.15],[0.7,1.05],[1,0.8]],formants:[[300,420,280,7,1],[620,800,560,8,0.6],[1800,2200,1700,9,0.15]],vib:{hz:4.5,depth:0.03,from:0.35},rasp:{hz:28,depth:0.35}},
+  {name:'RASPY',desc:'Vocal fry flutter and some grit on top.',source:'sawtooth',detune:12,sub:0.25,f0:125,dur:1.0,vol:0.24,hum:0.18,contour:CONTOUR_CLASSIC,formants:FORMANTS_OO,rasp:{hz:32,depth:0.55},drive:2.5,vib:{hz:6,depth:0.03,from:0.5}},
+  {name:'WAH',desc:'One sweeping resonance, like a wah pedal saying moo.',source:'sawtooth',sub:0.2,f0:125,dur:1.0,vol:1.1,hum:0,attack:0.12,contour:[[0,0.92],[0.4,1.2],[1,0.85]],lp:{type:'bandpass',q:6,a:260,b:1100,c:380,gain:3},vib:{hz:6,depth:0.03,from:0.4}},
+  {name:'HORN',desc:'FM brass. A foghorn with a cow inside it.',source:'fm',fm:{ratio:1,index:2.2},f0:135,dur:0.95,vol:0.85,hum:0,attack:0.15,contour:[[0,0.95],[0.3,1.1],[1,0.9]],lp:{a:600,b:1400,c:700,q:1},vib:{hz:5,depth:0.02,from:0.5}},
+  {name:'CARTOON',desc:'Smooth tone with a long slide down. Silly on purpose.',source:'triangle',sub:0.15,f0:190,dur:0.9,vol:0.8,hum:0.1,contour:[[0,1.0],[0.2,1.05],[1,0.5]],lp:{a:500,b:1200,c:400,q:2},vib:{hz:7,depth:0.04,from:0.3}},
+  {name:'NASAL',desc:'Long closed M and a tight, nosey vowel.',source:'sawtooth',detune:8,sub:0.3,f0:115,dur:1.1,vol:0.8,hum:0.35,humFreq:230,humGain:0.6,contour:CONTOUR_CLASSIC,formants:[[280,380,260,10,1],[900,1100,850,12,0.35],[2600,2800,2500,10,0.1]],vib:{hz:6,depth:0.03,from:0.5}},
+  {name:'CALF',desc:'Small, high and quick.',source:'sawtooth',detune:10,sub:0.1,f0:210,dur:0.65,vol:0.55,hum:0.12,contour:[[0,0.95],[0.3,1.3],[0.7,1.15],[1,0.9]],formants:[[500,650,450,8,1],[1000,1300,900,9,0.5],[2800,3200,2700,10,0.2]],vib:{hz:7.5,depth:0.05,from:0.3}},
+  {name:'TWO-NOTE',desc:'"mu-OOO". Jumps up a fourth, then settles.',source:'sawtooth',detune:7,sub:0.3,f0:115,dur:1.15,vol:0.5,hum:0.2,contour:[[0,1.0],[0.3,1.0],[0.36,1.33],[0.7,1.3],[1,1.0]],formants:[[600,380,330,7,1],[1000,760,680,8,0.55],[2400,2200,2100,10,0.15]],vib:{hz:6,depth:0.035,from:0.5}}
+];
+function synthMoo(o,variant){
   if(!AC||muted)return;
-  const t=AC.currentTime,f=base*rand(0.9,1.1),tM=sad?0.16:0.22;
-  const stopAt=t+dur+0.1;
-  const mk=(type,det)=>{const o=AC.createOscillator();o.type=type;if(det)o.detune.value=det;return o;};
-  const o1=mk('sawtooth',0),o2=mk('sawtooth',9),sub=mk('square',0);
-  const pts=sad?[[0,1.0],[0.2,1.06],[0.5,0.82],[0.8,0.62],[1,0.5]]:[[0,0.9],[0.15,0.93],[0.35,1.28],[0.6,1.18],[0.85,0.96],[1,0.8]];
-  for(const [o,m] of [[o1,1],[o2,1],[sub,0.5]]){
-    o.frequency.setValueAtTime(f*pts[0][1]*m,t);
-    for(const [k,v] of pts.slice(1))o.frequency.linearRampToValueAtTime(f*v*m,t+k*dur);
-  }
-  const vib=AC.createOscillator(),vg=AC.createGain();vib.frequency.value=6;vg.gain.setValueAtTime(0,t);vg.gain.linearRampToValueAtTime(f*0.04,t+dur*0.45);
-  vib.connect(vg);vg.connect(o1.frequency);vg.connect(o2.frequency);
-  const src=AC.createGain();src.gain.value=0.5;o1.connect(src);o2.connect(src);
-  const subg=AC.createGain();subg.gain.value=0.3;sub.connect(subg).connect(src);
-  const hum=AC.createBiquadFilter();hum.type='lowpass';hum.frequency.value=260;hum.Q.value=1.2;
-  const humG=AC.createGain();humG.gain.setValueAtTime(0.0001,t);humG.gain.exponentialRampToValueAtTime(0.45,t+0.05);humG.gain.setValueAtTime(0.45,t+tM);humG.gain.exponentialRampToValueAtTime(0.08,t+tM+0.03);
-  src.connect(hum).connect(humG);
-  const vowel=AC.createGain();vowel.gain.setValueAtTime(0.0001,t);vowel.gain.setValueAtTime(0.0001,t+tM-0.005);vowel.gain.exponentialRampToValueAtTime(1,t+tM+0.035);vowel.gain.setValueAtTime(1,t+dur*0.7);vowel.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  const formants=sad?[[380,8,1.0,300],[760,9,0.55,620],[2300,10,0.15,2000]]:[[420,8,1.0,320],[820,9,0.6,650],[2500,10,0.18,2200]];
-  for(const [fc,q,g,fend] of formants){
-    const bp=AC.createBiquadFilter();bp.type='bandpass';bp.Q.value=q;
-    bp.frequency.setValueAtTime(fc*0.85,t);bp.frequency.linearRampToValueAtTime(fc*1.25,t+dur*0.45);bp.frequency.linearRampToValueAtTime(fend,t+dur);
-    const bg=AC.createGain();bg.gain.value=g*6;
-    src.connect(bp).connect(bg).connect(vowel);
-  }
-  const master=AC.createGain();master.gain.value=vol;
-  humG.connect(master);vowel.connect(master);master.connect(AC.destination);
-  for(const o of [o1,o2,sub,vib]){o.start(t);o.stop(stopAt);}
+  const t=AC.currentTime;
+  let f=o.f0*rand(0.95,1.05),dur=o.dur,contour=o.contour;
+  if(variant==='hurt'){f*=1.25;dur*=0.55;contour=[[0,1.1],[0.3,1.3],[1,0.9]];}
+  if(variant==='down'){f*=0.95;dur*=1.3;contour=[[0,1.0],[0.2,1.06],[0.5,0.82],[0.8,0.62],[1,0.5]];}
+  const stopAt=t+dur+0.15,nodes=[];
+  const mkOsc=(type,mult,det)=>{const osc=AC.createOscillator();if(type==='pulse')osc.setPeriodicWave(pulseWave());else osc.type=type;if(det)osc.detune.value=det;
+    osc.frequency.setValueAtTime(f*contour[0][1]*mult,t);for(const [k,v] of contour.slice(1))osc.frequency.linearRampToValueAtTime(f*v*mult,t+k*dur);nodes.push(osc);return osc;};
+  const srcG=AC.createGain();srcG.gain.value=0.5;
+  let carrier;
+  if(o.source==='fm'){carrier=mkOsc('sine',1,0);const mod=mkOsc('sine',o.fm.ratio,0);const mg=AC.createGain();mg.gain.setValueAtTime(f*o.fm.index,t);mg.gain.linearRampToValueAtTime(f*o.fm.index*0.3,t+dur);mod.connect(mg).connect(carrier.frequency);carrier.connect(srcG);}
+  else{carrier=mkOsc(o.source,1,0);carrier.connect(srcG);if(o.detune){const o2=mkOsc(o.source,1,o.detune);const g2=AC.createGain();g2.gain.value=0.6;o2.connect(g2).connect(srcG);}}
+  if(o.sub){const sub=mkOsc('square',0.5,0);const sg=AC.createGain();sg.gain.value=o.sub;sub.connect(sg).connect(srcG);}
+  if(o.vib){const vib=AC.createOscillator();vib.frequency.value=o.vib.hz;const vg=AC.createGain();vg.gain.setValueAtTime(0,t);vg.gain.setValueAtTime(0,t+dur*o.vib.from);vg.gain.linearRampToValueAtTime(f*o.vib.depth,t+dur*Math.min(1,o.vib.from+0.25));vib.connect(vg);vg.connect(carrier.frequency);nodes.push(vib);}
+  let voice=srcG;
+  if(o.rasp){const am=AC.createGain();am.gain.value=1-o.rasp.depth*0.5;const lfo=AC.createOscillator();lfo.type='sawtooth';lfo.frequency.value=o.rasp.hz;const lg=AC.createGain();lg.gain.value=o.rasp.depth*0.5;lfo.connect(lg).connect(am.gain);nodes.push(lfo);voice.connect(am);voice=am;}
+  if(o.drive){const ws=AC.createWaveShaper();ws.curve=driveCurve(o.drive);voice.connect(ws);voice=ws;}
+  const master=AC.createGain();master.gain.value=o.vol;master.connect(AC.destination);
+  const tM=o.hum||0;
+  if(tM>0){const hum=AC.createBiquadFilter();hum.type='lowpass';hum.frequency.value=o.humFreq||260;hum.Q.value=1.2;const hg=AC.createGain();const hv=o.humGain||0.45;
+    hg.gain.setValueAtTime(0.0001,t);hg.gain.exponentialRampToValueAtTime(hv,t+0.05);hg.gain.setValueAtTime(hv,t+tM);hg.gain.exponentialRampToValueAtTime(0.05,t+tM+0.03);hg.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    voice.connect(hum).connect(hg).connect(master);}
+  const vg=AC.createGain();vg.gain.setValueAtTime(0.0001,t);
+  if(tM>0){vg.gain.setValueAtTime(0.0001,t+tM-0.005);vg.gain.exponentialRampToValueAtTime(1,t+tM+0.035);}else vg.gain.exponentialRampToValueAtTime(1,t+(o.attack||0.08));
+  vg.gain.setValueAtTime(1,t+dur*(o.sustain||0.7));vg.gain.exponentialRampToValueAtTime(0.0001,t+dur);vg.connect(master);
+  if(o.formants){for(const [fa,fb,fc,q,g] of o.formants){const bp=AC.createBiquadFilter();bp.type='bandpass';bp.Q.value=q;bp.frequency.setValueAtTime(fa,t);bp.frequency.linearRampToValueAtTime(fb,t+dur*0.45);bp.frequency.linearRampToValueAtTime(fc,t+dur);const bg=AC.createGain();bg.gain.value=g*6;voice.connect(bp).connect(bg).connect(vg);}}
+  else{const lp=AC.createBiquadFilter();lp.type=o.lp.type||'lowpass';lp.Q.value=o.lp.q||1;lp.frequency.setValueAtTime(o.lp.a,t);lp.frequency.linearRampToValueAtTime(o.lp.b,t+dur*0.4);lp.frequency.linearRampToValueAtTime(o.lp.c,t+dur);const lg=AC.createGain();lg.gain.value=o.lp.gain||1;voice.connect(lp).connect(lg).connect(vg);}
+  for(const n of nodes){n.start(t);n.stop(stopAt);}
 }
+function mooPreset(){return MOO_PRESETS[clamp(S.mooIdx|0,0,MOO_PRESETS.length-1)];}
 function spray(vol){
   if(!AC||muted)return;
   const t=AC.currentTime,sr=AC.sampleRate,dur=0.55,n=Math.floor(sr*dur);
@@ -277,9 +314,9 @@ const SFX={
   skip(){tone(900,1400,0.08,'sine',0.14);},
   plunk(){tone(300,110,0.25,'sine',0.2);noise(0.12,0.1,900);},
   hit(){tone(220,80,0.2,'square',0.14);noise(0.1,0.15,800);},
-  moo(){moo(120,1.0,0.5,false);},
-  mooHurt(){moo(150,0.55,0.45,false);},
-  mooDown(){moo(115,1.25,0.5,true);},
+  moo(){synthMoo(mooPreset());},
+  mooHurt(){synthMoo(mooPreset(),'hurt');},
+  mooDown(){synthMoo(mooPreset(),'down');},
   spray(){spray(0.6);},
   splat(){
     noiseBand(0.22,0.5,1400,250,0.8,0.005);
@@ -756,7 +793,23 @@ function resetGame(){
   S.shake=0;S.milkHit=0;S.spawnT=1;S.beachT=2;S.tilt.g0=null;S.aim=0;S.bestChain=0;
   for(let i=0;i<11;i++)spawnBeachRock();
 }
-function show(id){for(const o of ['title','over','board','pause'])$(o).hidden=o!==id;}
+function show(id){for(const o of ['title','over','board','pause','lab'])$(o).hidden=o!==id;}
+function labAudio(){audioInit();if(AC&&AC.resume)AC.resume();muted=$('muteBox').checked;}
+function renderLab(){
+  const el=$('labList');el.innerHTML='';
+  MOO_PRESETS.forEach((pr,i)=>{
+    const li=document.createElement('li');li.className=i===S.mooIdx?'sel':'';
+    li.innerHTML=`<div><div class="nm">${i+1}. ${pr.name}</div><div class="ds">${pr.desc}</div></div><button class="btn" type="button">Play</button>`;
+    li.querySelector('button').addEventListener('click',e=>{e.stopPropagation();labAudio();synthMoo(pr);});
+    li.addEventListener('click',()=>{S.mooIdx=i;try{localStorage.setItem(LS_MOO,String(i));}catch(e){}renderLab();labAudio();synthMoo(pr);});
+    el.appendChild(li);
+  });
+}
+$('labBtn').addEventListener('click',()=>{renderLab();show('lab');});
+$('labBackBtn').addEventListener('click',()=>show('title'));
+$('labHurtBtn').addEventListener('click',()=>{labAudio();synthMoo(mooPreset(),'hurt');});
+$('labDownBtn').addEventListener('click',()=>{labAudio();synthMoo(mooPreset(),'down');});
+try{const m=parseInt(localStorage.getItem(LS_MOO));if(!isNaN(m))S.mooIdx=clamp(m,0,MOO_PRESETS.length-1);}catch(e){}
 async function startGame(practice){
   audioInit();if(AC&&AC.resume)AC.resume();
   muted=$('muteBox').checked;$('muteBox2').checked=muted;S.tilt.invert=$('invertTilt').checked;
