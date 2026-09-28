@@ -70,8 +70,10 @@ input[type=text]:focus{outline:3px solid var(--gold);}
       </ul>
       <div class="row">
         <button id="startBtn" class="btn primary">Start</button>
+        <button id="practiceBtn" class="btn">Practice</button>
         <button id="boardBtn" class="btn">High Scores</button>
       </div>
+      <p class="note" style="margin-bottom:12px">Practice is the same beach with no cows, for working on your skips. Tap PAUSE in the corner during a game to pause or quit.</p>
       <div class="row small">
         <label><input type="checkbox" id="invertTilt" hidden> </label>
         <label><input type="checkbox" id="muteBox"> Mute sound</label>
@@ -99,6 +101,21 @@ input[type=text]:focus{outline:3px solid var(--gold);}
         <ol class="board" id="overBoard"></ol>
       </div>
       <div class="row"><button id="againBtn" class="btn primary">Play Again</button><button id="homeBtn" class="btn">Title</button></div>
+    </div>
+  </div>
+
+  <div id="pause" class="overlay" hidden>
+    <div class="card">
+      <p class="eyebrow" id="pauseEyebrow">Take a breather</p>
+      <h2>PAUSED</h2>
+      <div class="stats">
+        <div class="stat"><div class="v" id="pauseScore">0</div><div class="k">Score</div></div>
+        <div class="stat"><div class="v" id="pauseWave">1</div><div class="k" id="pauseWaveLabel">Wave</div></div>
+        <div class="stat"><div class="v" id="pauseLi">0%</div><div class="k">Lactose</div></div>
+      </div>
+      <div class="row"><button id="resumeBtn" class="btn primary">Resume</button><button id="restartBtn" class="btn">Restart</button></div>
+      <div class="row"><button id="quitBtn" class="btn">Quit to Title</button></div>
+      <div class="row small"><label><input type="checkbox" id="muteBox2"> Mute sound</label></div>
     </div>
   </div>
 
@@ -132,7 +149,7 @@ let clouds=[],waves=[],speckles=[],trees=[];
 const S={
   mode:'title',score:0,li:0,level:1,kills:0,time:0,camX:0,camTarget:0,
   dodge:{dir:0,t:0},pocket:[],sel:0,beach:[],cows:[],blasts:[],rocks:[],fx:[],msgs:[],
-  shake:0,milkHit:0,spawnT:1,beachT:2,
+  shake:0,milkHit:0,spawnT:1,beachT:2,practice:false,bestChain:0,
   tilt:{ok:false,listening:false,roll:0,g0:null,invert:false},aim:0,aimRaw:0,lastThrowV:0
 };
 
@@ -371,7 +388,7 @@ function updateRocks(dt){
         msg('SKIP x'+r.skips,p.sx,p.sy-14,'#e9fbff',8,0.6);
       }else{
         r.done=true;splash(r.x,r.z,0.6+r.rock.size*0.5);SFX.plunk();
-        if(r.skips>0){const b=r.skips*r.skips*5;S.score+=b;msg(r.skips+' SKIPS! +'+b,clamp(p.sx,70,W-70),p.sy-22,'#ffe66d',10);}
+        if(r.skips>0){const b=r.skips*r.skips*5;S.score+=b;msg(r.skips+' SKIPS! +'+b,clamp(p.sx,70,W-70),p.sy-22,'#ffe66d',10);if(r.skips>S.bestChain){S.bestChain=r.skips;if(S.practice)msg('NEW BEST CHAIN!',W/2,H*0.2,'#ffe66d',12,1.6);}}
       }
     }
     if(r.z>45||r.y<-1)r.done=true;
@@ -385,11 +402,12 @@ function updateRocks(dt){
   S.rocks=S.rocks.filter(r=>!r.done);
 }
 function update(dt){
+  if(S.mode==='pause')return;
   const play=S.mode==='play';
   for(const c of clouds){c.x+=c.v*dt;if(c.x>W+120)c.x=-120;}
   for(const b of S.beach)b.t+=dt;
   if(play){
-    S.time+=dt;updateLevel();updateDodge(dt);updateBlasts(dt);updateRocks(dt);
+    S.time+=dt;if(!S.practice)updateLevel();updateDodge(dt);updateBlasts(dt);updateRocks(dt);
     S.beachT-=dt;if(S.beach.length<BEACH_MAX&&S.beachT<=0){spawnBeachRock();S.beachT=2.2;}
     if(USE_TILT&&S.tilt.ok){
       if(S.tilt.g0===null)S.tilt.g0=S.tilt.roll;
@@ -397,7 +415,7 @@ function update(dt){
       S.aim+=(raw-S.aim)*Math.min(1,dt*10);
     }
   }
-  updateCows(dt,play);
+  if(!(play&&S.practice))updateCows(dt,play);
   for(const f of S.fx)f.t+=dt;S.fx=S.fx.filter(f=>f.t<f.life);
   for(const m of S.msgs)m.t+=dt;S.msgs=S.msgs.filter(m=>m.t<m.life);
   S.milkHit=Math.max(0,S.milkHit-dt/1.6);S.shake=Math.max(0,S.shake-dt*30);
@@ -549,14 +567,24 @@ function drawHUD(){
   ctx.fillStyle='rgba(10,18,28,.55)';ctx.fillRect(0,0,W,HUD_H);
   ctx.font=`10px ${PIX}`;ctx.fillStyle='#fff';ctx.textAlign='left';ctx.textBaseline='middle';
   ctx.fillText('SCORE '+String(S.score).padStart(6,'0'),12,20);
-  ctx.textAlign='center';ctx.fillStyle='#ffe66d';ctx.fillText('WAVE '+S.level,W/2,20);
-  const bw=Math.min(120,W*0.3),bx=W-bw-12,by=12;
-  ctx.fillStyle='#000';ctx.fillRect(bx-2,by-2,bw+4,18);
-  const bg=ctx.createLinearGradient(bx,0,bx+bw,0);bg.addColorStop(0,'#f28ca8');bg.addColorStop(1,'#fff');
-  ctx.fillStyle=bg;ctx.fillRect(bx,by,bw*S.li/100,14);
-  ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(bx-1,by-1,bw+2,16);
-  ctx.font=`7px ${PIX}`;ctx.fillStyle='#fff';ctx.textAlign='right';ctx.fillText('LACTOSE '+Math.round(S.li)+'%',W-12,42);
-  if(S.time<12){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText('SWIPE < > ANYWHERE TO STEP ASIDE',W/2,49);}
+  ctx.textAlign='center';ctx.fillStyle='#ffe66d';ctx.fillText(S.practice?'PRACTICE':'WAVE '+S.level,W/2,20);
+  if(S.practice){
+    ctx.textAlign='right';ctx.fillStyle='#fff';ctx.fillText('BEST '+S.bestChain,W-12,20);
+    ctx.font=`7px ${PIX}`;ctx.fillStyle='#9fd3ff';ctx.fillText('SKIP CHAIN',W-12,42);
+  }else{
+    const bw=Math.min(120,W*0.3),bx=W-bw-12,by=12;
+    ctx.fillStyle='#000';ctx.fillRect(bx-2,by-2,bw+4,18);
+    const bg=ctx.createLinearGradient(bx,0,bx+bw,0);bg.addColorStop(0,'#f28ca8');bg.addColorStop(1,'#fff');
+    ctx.fillStyle=bg;ctx.fillRect(bx,by,bw*S.li/100,14);
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(bx-1,by-1,bw+2,16);
+    ctx.font=`7px ${PIX}`;ctx.fillStyle='#fff';ctx.textAlign='right';ctx.fillText('LACTOSE '+Math.round(S.li)+'%',W-12,42);
+  }
+  ctx.font=`7px ${PIX}`;
+  if(S.mode==='play'||S.mode==='pause'){
+    ctx.fillStyle='#fff8f0';ctx.beginPath();ctx.roundRect(12,36,58,20,4);ctx.fill();
+    ctx.fillStyle='#1d2229';ctx.textAlign='center';ctx.fillText(S.mode==='pause'?'PLAY':'PAUSE',41,47);
+  }
+  if(S.time<12&&!S.practice){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText('SWIPE < > TO STEP ASIDE',W/2,49);}
   ctx.textBaseline='alphabetic';
 }
 const DRIPS=[[0.06,26,0.9],[0.2,18,0.5],[0.33,34,1.1],[0.5,22,0.7],[0.64,30,1.0],[0.8,20,0.6],[0.93,28,0.8]];
@@ -605,7 +633,8 @@ function endPtr(e){
   const dx=p.x-ptr.x0,dy=p.y-ptr.y0,dist=Math.hypot(dx,dy);
   const hp=heldRockPos(),inZone=Math.hypot(ptr.x0-hp.x,ptr.y0-hp.y)<throwZoneR();
   if(dist<20){
-    if(ptr.y0>=beachBot)selectSlot(ptr.x0);
+    if(ptr.y0<HUD_H){if(ptr.x0<80&&ptr.y0>30)pauseGame();}
+    else if(ptr.y0>=beachBot)selectSlot(ptr.x0);
     else if(ptr.y0>=shoreY+8)pickRock(ptr.x0,ptr.y0);
     else if(ptr.y0>=HUD_H){if(S.pocket.length)msg('SWIPE UP FROM THE ROCK TO THROW',W/2,shoreY-110,'#fff',9);else msg('POCKET EMPTY! GRAB ROCKS BELOW',W/2,shoreY-110,'#ffd166',10);}
   }
@@ -648,17 +677,30 @@ async function requestTilt(){
 function resetGame(){
   S.score=0;S.li=0;S.level=1;S.kills=0;S.time=0;S.camX=0;S.camTarget=0;S.dodge={dir:0,t:0};
   S.pocket=[];S.sel=0;S.beach=[];S.cows=[];S.blasts=[];S.rocks=[];S.fx=[];S.msgs=[];
-  S.shake=0;S.milkHit=0;S.spawnT=1;S.beachT=2;S.tilt.g0=null;S.aim=0;
+  S.shake=0;S.milkHit=0;S.spawnT=1;S.beachT=2;S.tilt.g0=null;S.aim=0;S.bestChain=0;
   for(let i=0;i<11;i++)spawnBeachRock();
 }
-function show(id){for(const o of ['title','over','board'])$(o).hidden=o!==id;}
-async function startGame(){
+function show(id){for(const o of ['title','over','board','pause'])$(o).hidden=o!==id;}
+async function startGame(practice){
   audioInit();if(AC&&AC.resume)AC.resume();
-  muted=$('muteBox').checked;S.tilt.invert=$('invertTilt').checked;
+  muted=$('muteBox').checked;$('muteBox2').checked=muted;S.tilt.invert=$('invertTilt').checked;
   if(USE_TILT)await requestTilt();
+  S.practice=!!practice;
   resetGame();S.mode='play';show(null);
-  msg('GRAB SOME ROCKS!',W/2,H*0.2,'#ffe66d',12,2);
+  msg(S.practice?'PRACTICE: JUST YOU AND THE LAKE':'GRAB SOME ROCKS!',W/2,H*0.2,'#ffe66d',S.practice?10:12,2);
 }
+function pauseGame(){
+  if(S.mode!=='play')return;
+  S.mode='pause';ptr=null;
+  $('pauseEyebrow').textContent=S.practice?'Practice paused':'Take a breather';
+  $('pauseScore').textContent=S.score;
+  $('pauseWave').textContent=S.practice?S.bestChain:S.level;
+  $('pauseWaveLabel').textContent=S.practice?'Best chain':'Wave';
+  $('pauseLi').textContent=S.practice?'n/a':Math.round(S.li)+'%';
+  show('pause');
+}
+function resumeGame(){if(S.mode!=='pause')return;S.mode='play';show(null);last=performance.now();}
+function quitToTitle(){S.mode='title';S.practice=false;resetGame();show('title');}
 function gameOver(){
   S.mode='over';SFX.over();
   $('finalScore').textContent=S.score;$('finalWave').textContent=S.level;$('finalKills').textContent=S.kills;
@@ -684,9 +726,16 @@ function saveScore(){
   list.sort((a,b)=>b.score-a.score);saveScores(list.slice(0,10));
   $('entry').hidden=true;$('overBoardWrap').hidden=false;renderBoard($('overBoard'),id);
 }
-$('startBtn').addEventListener('click',startGame);
-$('againBtn').addEventListener('click',startGame);
-$('homeBtn').addEventListener('click',()=>{S.mode='title';resetGame();show('title');});
+$('startBtn').addEventListener('click',()=>startGame(false));
+$('practiceBtn').addEventListener('click',()=>startGame(true));
+$('againBtn').addEventListener('click',()=>startGame(false));
+$('homeBtn').addEventListener('click',quitToTitle);
+$('resumeBtn').addEventListener('click',resumeGame);
+$('restartBtn').addEventListener('click',()=>startGame(S.practice));
+$('quitBtn').addEventListener('click',quitToTitle);
+$('muteBox2').addEventListener('change',e=>{muted=e.target.checked;$('muteBox').checked=muted;});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='p'||e.key==='P'){if(S.mode==='play')pauseGame();else if(S.mode==='pause')resumeGame();}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&S.mode==='play')pauseGame();});
 $('boardBtn').addEventListener('click',()=>{const n=renderBoard($('boardList'));$('boardEmpty').hidden=n>0;show('board');});
 $('backBtn').addEventListener('click',()=>show('title'));
 $('saveBtn').addEventListener('click',()=>{$('saveBtn').disabled=true;saveScore();});

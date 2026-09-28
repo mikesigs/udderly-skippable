@@ -11,6 +11,8 @@ Everything lives in one file, `index.html`. Open it on a phone (portrait) and pl
 - **Swipe sideways anywhere** to step one lane left or right. You stay there until you step again, so move before a milk blast lands.
 - Points for every skip, every hit and every downed cow, with a bonus for long skip chains. Cows get tougher and faster each wave.
 - At 100% lactose intolerance the game ends and you can enter your name on the local top-10 leaderboard.
+- **PAUSE** in the top-left corner (or the Escape or P key) opens a menu with resume, restart and quit to title. The game also pauses itself when the app goes to the background.
+- **Practice** from the title screen is the same beach with no cows, for working on your skip chain. The HUD tracks your best chain instead of a wave and lactose meter.
 
 ## Notes
 
