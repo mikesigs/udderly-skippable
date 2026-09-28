@@ -63,9 +63,9 @@ input[type=text]:focus{outline:3px solid var(--gold);}
       <p class="lede">Skip flat rocks at the flying cows before their milk pushes your lactose intolerance to 100%.</p>
       <ul class="how">
         <li><b>Tap rocks</b> on the beach to pocket them. Flat, palm-sized, mid-weight rocks skip best.</li>
-        <li><b>Swipe up</b> on the lake to throw. A quick, clean flick is ideal. Too soft plops, too hard plunges.</li>
-        <li><b>Tilt your phone</b> left or right to aim the throw.</li>
-        <li><b>Swipe sideways</b> to dodge incoming milk blasts.</li>
+        <li><b>Swipe up from the rock in your hand</b> to throw. A quick, clean flick is ideal. Too soft plops, too hard plunges. Angle your swipe to aim.</li>
+        <li><b>Swipe sideways anywhere</b> to step left or right. You stay there until you step again.</li>
+        <li>Cows fly low over the water and shoot milk. Step out of the way before it lands.</li>
         <li>Cows get tougher and faster each wave. Hit 100% lactose and it's over.</li>
       </ul>
       <div class="row">
@@ -73,10 +73,10 @@ input[type=text]:focus{outline:3px solid var(--gold);}
         <button id="boardBtn" class="btn">High Scores</button>
       </div>
       <div class="row small">
-        <label><input type="checkbox" id="invertTilt"> Invert tilt</label>
+        <label><input type="checkbox" id="invertTilt" hidden> </label>
         <label><input type="checkbox" id="muteBox"> Mute sound</label>
       </div>
-      <p class="note">Hold your phone upright in portrait. Tap the AIM meter during play to re-center the tilt.</p>
+      <p class="note">Best played holding your phone upright in portrait.</p>
     </div>
   </div>
 
@@ -125,6 +125,7 @@ const TAU=Math.PI*2;
 const PIX='"Press Start 2P", monospace';
 
 const CAM_H=1.7, SHORE_Z=2, POCKET_MAX=8, BEACH_MAX=14, IDEAL_V=2.0;
+const YS=1.5, ROCK_G=12, LANE=1.4, USE_TILT=false, EYE_Y=(CAM_H-0.15)/YS;
 let W=0,H=0,DPR=1,HUD_H=64,horizonY=0,shoreY=0,beachTop=0,beachBot=0,pocketTop=0,F=1;
 let clouds=[],waves=[],speckles=[],trees=[];
 
@@ -148,10 +149,12 @@ function resize(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   layout(); buildScenery();
 }
-function project(x,y,z){const s=F/Math.max(z,0.05);return {sx:W/2+(x-S.camX)*s,sy:horizonY+(CAM_H-y)*s,s};}
+function project(x,y,z){const s=F/Math.max(z,0.05);return {sx:W/2+(x-S.camX)*s,sy:horizonY+(CAM_H-y*YS)*s,s};}
+function heldRockPos(){return {x:W/2,y:shoreY-34};}
+function throwZoneR(){return Math.max(64,W*0.2);}
 
 function buildScenery(){
-  clouds=[];for(let i=0;i<5;i++)clouds.push({x:rand(-80,W+80),y:rand(horizonY*0.15,horizonY*0.6),w:rand(40,90),v:rand(4,9)});
+  clouds=[];for(let i=0;i<5;i++)clouds.push({x:rand(-80,W+80),y:rand(HUD_H+24,horizonY*0.7),w:rand(40,90),v:rand(4,9)});
   waves=[];for(let i=0;i<48;i++)waves.push({x:rand(-24,24),z:rand(2.6,42),len:rand(0.4,1.8),ph:rand(0,TAU)});
   speckles=[];for(let i=0;i<140;i++)speckles.push({x:rand(0,W),y:rand(beachTop+8,beachBot-4),r:rand(0.6,1.6),d:Math.random()<0.5});
   trees=[];
@@ -268,20 +271,20 @@ function selectSlot(x){const g=slotGeom();const i=Math.floor((x-g.x0)/(g.slotW+4
 
 /* ---------- cows & milk ---------- */
 function spawnCow(){
-  const lv=S.level,dir=Math.random()<0.5?1:-1,z=rand(5,17),half=(W/2)*z/F;
+  const lv=S.level,dir=Math.random()<0.5?1:-1,z=rand(4,14),half=(W/2)*z/F;
   const spots=[];for(let i=0;i<4;i++)spots.push([rand(-0.6,0.5),rand(-0.3,0.3),rand(0.12,0.24),rand(0.1,0.2)]);
-  const c={x:-dir*(half+1.2),y0:rand(0.7,2.6),y:0,z,dir,vx:dir*(1.5+0.35*(lv-1))*rand(0.85,1.15),
-    hp:1+0.75*(lv-1),spots,fire:rand(1.5,3.5),charge:0,bob:rand(0,TAU),t:0,dead:false,vy:0,rot:0,hitT:0,gone:false};
+  const c={x:-dir*(half+1.2),y0:rand(0.3,1.0),y:0,z,dir,vx:dir*(1.2+0.18*(lv-1))*rand(0.85,1.15),
+    hp:1+0.4*(lv-1),spots,fire:rand(2.5,4.5),charge:0,bob:rand(0,TAU),t:0,dead:false,vy:0,rot:0,hitT:0,gone:false};
   c.maxhp=c.hp;c.y=c.y0;S.cows.push(c);
 }
 function fireBlast(c){
   const lv=S.level;
-  S.blasts.push({x0:c.x,y0:c.y-0.35,z0:c.z,tx:S.camX,t:0,dur:Math.max(0.85,2.1-0.12*(lv-1)),x:c.x,y:c.y,z:c.z,done:false});
+  S.blasts.push({x0:c.x,y0:Math.max(0.1,c.y-0.25),z0:c.z,tx:S.camTarget,t:0,dur:Math.max(1.2,2.5-0.08*(lv-1)),x:c.x,y:c.y,z:c.z,done:false});
   const p=project(c.x,c.y,c.z);msg('MOO!',p.sx,p.sy-0.9*p.s,'#fff',9,0.7);
   SFX.moo();
 }
 function milkHit(){
-  const dmg=Math.min(25,10+1.6*(S.level-1));
+  const dmg=Math.min(20,8+1*(S.level-1));
   S.li=Math.min(100,S.li+dmg);S.milkHit=1;S.shake=12;SFX.splat();
   msg('SPLAT! +'+Math.round(dmg)+'% LACTOSE',W/2,H*0.42,'#fff',12,1.6);
   if(S.li>=100)gameOver();
@@ -301,24 +304,22 @@ function throwRock(v,fallbackAngle){
   S.sel=clamp(S.sel,0,Math.max(0,S.pocket.length-1));
   const q=Math.exp(-Math.pow((v-IDEAL_V)/1.1,2));
   const pw=clamp(v/IDEAL_V,0.35,1.5);
-  const ang=(S.tilt.ok?S.aim:fallbackAngle)*Math.PI/180;
-  const sp=7+8*pw;
+  const ang=(USE_TILT&&S.tilt.ok?S.aim:fallbackAngle)*Math.PI/180;
+  const sp=4.5+3*pw;
   let skipsLeft=Math.round(1+10*rock.pot*q);if(q<0.2)skipsLeft=0;
-  S.rocks.push({rock,x:S.camX,y:0.9,z:1.0,vx:Math.sin(ang)*sp,vz:Math.cos(ang)*sp,vy:2.6+1.6*Math.min(pw,1),skips:0,skipsLeft,rot:0,spin:rand(8,14),done:false,q});
+  S.rocks.push({rock,x:S.camX,y:0.5,z:1.4,vx:Math.sin(ang)*sp,vz:Math.cos(ang)*sp,vy:1.6+0.8*Math.min(pw,1),skips:0,skipsLeft,rot:0,spin:rand(8,14),done:false,q});
   SFX.throw();S.lastThrowV=v;
   let fb,col='#fff';
   if(v<1.2){fb='TOO GENTLE';col='#9fd3ff';}else if(v>2.9){fb='TOO HARD!';col='#ff9f9f';}else if(q>0.88){fb='PERFECT FLICK!';col='#ffe66d';}else fb='NICE FLICK';
   msg(fb,W/2,shoreY-64,col,11);
 }
-function dodge(dir){S.dodge={dir,t:0.0001};}
+function dodge(dir){
+  const nt=clamp(Math.round(S.camTarget/LANE+dir)*LANE,-LANE,LANE);
+  if(nt===S.camTarget){msg(dir>0?'CAN\'T STEP FURTHER RIGHT':'CAN\'T STEP FURTHER LEFT',W/2,shoreY-92,'#ffd166',9,0.9);return;}
+  S.camTarget=nt;SFX.dodge();
+}
 function updateDodge(dt){
-  if(S.dodge.t>0){
-    S.dodge.t+=dt;const t=S.dodge.t;
-    const k=t<0.12?t/0.12:t<0.5?1:Math.max(0,1-(t-0.5)/0.3);
-    S.camTarget=S.dodge.dir*1.4*k;
-    if(t>=0.8){S.dodge.t=0;S.camTarget=0;}
-  }
-  S.camX+=(S.camTarget-S.camX)*Math.min(1,dt*18);
+  S.camX+=(S.camTarget-S.camX)*Math.min(1,dt*14);
 }
 
 /* ---------- messages & fx ---------- */
@@ -327,44 +328,44 @@ function splash(x,z,size){S.fx.push({x,z,t:0,life:0.6,size});}
 
 /* ---------- update ---------- */
 function updateLevel(){
-  const lv=1+Math.floor(S.kills/3)+Math.floor(S.time/45);
+  const lv=1+Math.floor(S.kills/5)+Math.floor(S.time/75);
   if(lv!==S.level){S.level=lv;msg('WAVE '+lv+'!',W/2,H*0.2,'#ffe66d',16,2);SFX.wave();}
 }
 function updateCows(dt,canFire){
   for(const c of S.cows){
     c.t+=dt;c.hitT=Math.max(0,c.hitT-dt);
     if(c.dead){c.vy-=9.8*dt;c.y+=c.vy*dt;c.rot+=c.dir*4*dt;if(c.y<=0){c.gone=true;splash(c.x,c.z,1.6);}continue;}
-    c.x+=c.vx*dt;c.y=c.y0+Math.sin(c.t*2.2+c.bob)*0.25;
+    c.x+=c.vx*dt;c.y=c.y0+Math.sin(c.t*2.2+c.bob)*0.15;
     const half=(W/2)*c.z/F;
     if(c.x*c.dir>half+2.5)c.gone=true;
     const onScreen=Math.abs(c.x-S.camX)<half*0.9;
     if(onScreen&&canFire){
       c.fire-=dt;c.charge=c.fire<0.6?1-c.fire/0.6:0;
-      if(c.fire<=0){fireBlast(c);c.fire=Math.max(1.4,4.2-0.3*(S.level-1))*rand(0.8,1.25);c.charge=0;}
+      if(c.fire<=0){fireBlast(c);c.fire=Math.max(2.0,5.0-0.25*(S.level-1))*rand(0.8,1.25);c.charge=0;}
     }
   }
   S.cows=S.cows.filter(c=>!c.gone);
   S.spawnT-=dt;
-  const maxC=canFire?Math.min(5,1+Math.floor(S.level/1.5)):2;
+  const maxC=canFire?Math.min(4,1+Math.floor((S.level-1)/2)):2;
   if(S.cows.filter(c=>!c.dead).length<maxC&&S.spawnT<=0){spawnCow();S.spawnT=rand(1.2,2.8);}
 }
 function updateBlasts(dt){
   for(const b of S.blasts){
     b.t+=dt;const e=Math.min(1,b.t/b.dur),ee=e*e*0.5+e*0.5;
-    b.z=lerp(b.z0,0.5,ee);b.x=lerp(b.x0,b.tx,ee);b.y=lerp(b.y0,CAM_H-0.15,ee);
-    if(e>=1){b.done=true;if(Math.abs(S.camX-b.tx)<0.7)milkHit();else{S.score+=25;msg('DODGED! +25',W/2,shoreY-92,'#bff7d0',10);SFX.dodge();}}
+    b.z=lerp(b.z0,0.5,ee);b.x=lerp(b.x0,b.tx,ee);b.y=lerp(b.y0,EYE_Y,ee);
+    if(e>=1){b.done=true;if(Math.abs(S.camX-b.tx)<0.7)milkHit();else{S.score+=25;msg('DODGED! +25',W/2,shoreY-92,'#bff7d0',10);}}
   }
   S.blasts=S.blasts.filter(b=>!b.done);
 }
 function updateRocks(dt){
   for(const r of S.rocks){
     if(r.done)continue;
-    r.vy-=9.8*dt;r.x+=r.vx*dt;r.y+=r.vy*dt;r.z+=r.vz*dt;r.rot+=r.spin*dt;
+    r.vy-=ROCK_G*dt;r.x+=r.vx*dt;r.y+=r.vy*dt;r.z+=r.vz*dt;r.rot+=r.spin*dt;
     if(r.y<=0&&r.vy<0){
       const p=project(r.x,0,r.z);
-      if(r.skipsLeft>0&&r.z<70){
+      if(r.skipsLeft>0&&r.z<40){
         r.skipsLeft--;r.skips++;r.y=0;
-        r.vy=-r.vy*(0.42+0.33*r.rock.flat);if(r.vy<0.9)r.vy=0.9;
+        r.vy=-r.vy*(0.55+0.35*r.rock.flat);if(r.vy<1.2)r.vy=1.2;
         r.vz*=0.86;r.vx*=0.9;
         splash(r.x,r.z,0.35+r.rock.size*0.3);S.score+=5;SFX.skip();
         msg('SKIP x'+r.skips,p.sx,p.sy-14,'#e9fbff',8,0.6);
@@ -373,7 +374,7 @@ function updateRocks(dt){
         if(r.skips>0){const b=r.skips*r.skips*5;S.score+=b;msg(r.skips+' SKIPS! +'+b,clamp(p.sx,70,W-70),p.sy-22,'#ffe66d',10);}
       }
     }
-    if(r.z>80||r.y<-1)r.done=true;
+    if(r.z>45||r.y<-1)r.done=true;
     if(!r.done)for(const c of S.cows){
       if(c.dead)continue;
       if(Math.abs(c.z-r.z)<1.3&&Math.abs(c.x-r.x)<0.95&&Math.abs(c.y-r.y)<0.6){hitCow(c,r);break;}
@@ -388,7 +389,7 @@ function update(dt){
   if(play){
     S.time+=dt;updateLevel();updateDodge(dt);updateBlasts(dt);updateRocks(dt);
     S.beachT-=dt;if(S.beach.length<BEACH_MAX&&S.beachT<=0){spawnBeachRock();S.beachT=2.2;}
-    if(S.tilt.ok){
+    if(USE_TILT&&S.tilt.ok){
       if(S.tilt.g0===null)S.tilt.g0=S.tilt.roll;
       const raw=clamp((S.tilt.roll-S.tilt.g0)*(S.tilt.invert?-1.4:1.4),-45,45);
       S.aim+=(raw-S.aim)*Math.min(1,dt*10);
@@ -463,13 +464,13 @@ function drawCow(c){
 }
 function drawBlast(b){
   const p=project(b.x,b.y,b.z),rad=clamp(0.28*p.s,3,W*0.9);
-  for(let i=3;i>=1;i--){const e=Math.max(0,b.t/b.dur-i*0.04);const ee=e*e*0.5+e*0.5;const q=project(lerp(b.x0,b.tx,ee),lerp(b.y0,CAM_H-0.15,ee),lerp(b.z0,0.5,ee));ctx.fillStyle=`rgba(255,255,255,${0.45-i*0.1})`;ctx.beginPath();ctx.arc(q.sx,q.sy,clamp(0.28*q.s,2,W)*(0.7-i*0.12),0,TAU);ctx.fill();}
+  for(let i=3;i>=1;i--){const e=Math.max(0,b.t/b.dur-i*0.04);const ee=e*e*0.5+e*0.5;const q=project(lerp(b.x0,b.tx,ee),lerp(b.y0,EYE_Y,ee),lerp(b.z0,0.5,ee));ctx.fillStyle=`rgba(255,255,255,${0.45-i*0.1})`;ctx.beginPath();ctx.arc(q.sx,q.sy,clamp(0.28*q.s,2,W)*(0.7-i*0.12),0,TAU);ctx.fill();}
   ctx.fillStyle='rgba(200,230,255,.55)';ctx.beginPath();ctx.arc(p.sx,p.sy,rad*1.25,0,TAU);ctx.fill();
   ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(p.sx,p.sy,rad,0,TAU);ctx.fill();
   ctx.fillStyle='rgba(180,215,240,.6)';ctx.beginPath();ctx.arc(p.sx+rad*0.3,p.sy+rad*0.3,rad*0.35,0,TAU);ctx.fill();
 }
 function drawFlyingRock(r){
-  const p=project(r.x,r.y,r.z),rp=(0.05+0.13*r.rock.size)*p.s;if(rp<0.6)return;
+  const p=project(r.x,r.y,r.z),rp=(0.06+0.12*r.rock.size)*p.s;if(rp<0.6)return;
   if(r.y>0){const sh=project(r.x,0,r.z);ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(sh.sx,sh.sy,rp,rp*0.35,0,0,TAU);ctx.fill();}
   drawRock(p.sx,p.sy,rp,r.rock,r.rot);
 }
@@ -490,15 +491,16 @@ function drawWorld(t){
   ctx.save();ctx.beginPath();ctx.rect(0,horizonY-40,W,shoreY-horizonY+60);ctx.clip();
   for(const it of items)it.d();
   ctx.restore();
-  if(S.mode==='play'&&S.pocket.length){
-    const a=(S.tilt.ok?S.aim:0)*Math.PI/180;
-    ctx.setLineDash([6,8]);ctx.lineDashOffset=-t*40;ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=2;ctx.beginPath();
-    for(let d=0;d<=30;d+=3){const p=project(S.camX+Math.sin(a)*d,0,1.6+Math.cos(a)*d);if(d===0)ctx.moveTo(p.sx,p.sy);else ctx.lineTo(p.sx,p.sy);}
-    ctx.stroke();ctx.setLineDash([]);
-    const rock=S.pocket[S.sel],hp=project(S.camX,0.9,1.0),rr=12+rock.size*12;
-    drawRock(hp.sx,hp.sy-6+Math.sin(t*3)*2,rr,rock,rock.rot+Math.sin(t)*0.1);
-    if(S.time<10){ctx.fillStyle='rgba(255,255,255,.8)';ctx.font=`8px ${PIX}`;ctx.textAlign='center';ctx.fillText('SWIPE UP TO THROW',hp.sx,hp.sy-rr-14);}
-  }
+}
+function drawHeldRock(t){
+  if(S.mode!=='play'||!S.pocket.length)return;
+  const hp=heldRockPos(),zr=throwZoneR();
+  ctx.setLineDash([4,7]);ctx.lineDashOffset=-t*20;ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(hp.x,hp.y,zr,0,TAU);ctx.stroke();ctx.setLineDash([]);
+  const rock=S.pocket[S.sel],rr=16+rock.size*12;
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(hp.x+3,hp.y+rr*0.6,rr*rock.aspect*0.9,rr*0.45,0,0,TAU);ctx.fill();
+  drawRock(hp.x,hp.y+Math.sin(t*3)*2,rr,rock,rock.rot+Math.sin(t)*0.1);
+  if(S.time<12){ctx.fillStyle='rgba(255,255,255,.85)';ctx.font=`8px ${PIX}`;ctx.textAlign='center';ctx.fillText('SWIPE UP FROM HERE',hp.x,hp.y-zr-8);}
 }
 function drawBeach(t){
   ctx.fillStyle='#b8a27c';ctx.fillRect(0,shoreY-2,W,14);
@@ -545,14 +547,7 @@ function drawHUD(){
   ctx.fillStyle=bg;ctx.fillRect(bx,by,bw*S.li/100,14);
   ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(bx-1,by-1,bw+2,16);
   ctx.font=`7px ${PIX}`;ctx.fillStyle='#fff';ctx.textAlign='right';ctx.fillText('LACTOSE '+Math.round(S.li)+'%',W-12,42);
-  ctx.textAlign='left';
-  if(S.tilt.ok){
-    ctx.fillStyle='#9fd3ff';ctx.fillText('AIM',12,49);
-    ctx.fillStyle='rgba(255,255,255,.15)';ctx.fillRect(44,44,90,10);
-    ctx.fillStyle='rgba(255,255,255,.5)';ctx.fillRect(88,42,2,14);
-    ctx.fillStyle='#ffe66d';ctx.beginPath();const mx=89+S.aim/45*44;ctx.moveTo(mx,44);ctx.lineTo(mx+5,54);ctx.lineTo(mx-5,54);ctx.closePath();ctx.fill();
-  }else{ctx.fillStyle='#9fd3ff';ctx.fillText('AIM: SWIPE ANGLE',12,49);}
-  if(S.time<12){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText('SWIPE < > TO DODGE',W/2,49);}
+  if(S.time<12){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText('SWIPE < > ANYWHERE TO STEP ASIDE',W/2,49);}
   ctx.textBaseline='alphabetic';
 }
 const DRIPS=[[0.06,26,0.9],[0.2,18,0.5],[0.33,34,1.1],[0.5,22,0.7],[0.64,30,1.0],[0.8,20,0.6],[0.93,28,0.8]];
@@ -575,7 +570,7 @@ function drawMsgs(){
 function draw(t){
   ctx.save();
   if(S.shake>0)ctx.translate(rand(-S.shake,S.shake)*0.5,rand(-S.shake,S.shake)*0.5);
-  drawBackground(t);drawLake(t);drawWorld(t);drawBeach(t);drawPocket();
+  drawBackground(t);drawLake(t);drawWorld(t);drawBeach(t);drawHeldRock(t);drawPocket();
   ctx.restore();
   drawHUD();drawMilk();drawMsgs();
 }
@@ -597,19 +592,22 @@ function endPtr(e){
   if(!ptr||e.pointerId!==ptr.id)return;
   const p=localPos(e),t=performance.now();ptr.hist.push({x:p.x,y:p.y,t});
   const dx=p.x-ptr.x0,dy=p.y-ptr.y0,dist=Math.hypot(dx,dy);
-  if(ptr.y0<HUD_H){if(ptr.x0<150&&ptr.y0>34){S.tilt.g0=S.tilt.roll;S.aim=0;msg('TILT RE-CENTERED',W/2,H*0.2,'#9fd3ff',9);}}
-  else if(ptr.y0<shoreY){
-    if(dist<18){if(S.pocket.length)msg('SWIPE UP TO THROW',W/2,shoreY-64,'#fff',9);else msg('POCKET EMPTY! GRAB ROCKS BELOW',W/2,shoreY-40,'#ffd166',10);}
-    else if(-dy>Math.abs(dx)*0.8){
+  const hp=heldRockPos(),inZone=Math.hypot(ptr.x0-hp.x,ptr.y0-hp.y)<throwZoneR();
+  if(dist<20){
+    if(ptr.y0>=beachBot)selectSlot(ptr.x0);
+    else if(ptr.y0>=shoreY+8)pickRock(ptr.x0,ptr.y0);
+    else if(ptr.y0>=HUD_H){if(S.pocket.length)msg('SWIPE UP FROM THE ROCK TO THROW',W/2,shoreY-110,'#fff',9);else msg('POCKET EMPTY! GRAB ROCKS BELOW',W/2,shoreY-110,'#ffd166',10);}
+  }
+  else if(Math.abs(dx)>Math.abs(dy)){dodge(Math.sign(dx));}
+  else if(dy<0){
+    if(inZone){
       const h=ptr.hist,last=h[h.length-1];let j=h.length-1;while(j>0&&last.t-h[j-1].t<120)j--;
       const a=h[j],vWin=Math.hypot(last.x-a.x,last.y-a.y)/Math.max(16,last.t-a.t);
       const vAll=dist/Math.max(16,t-ptr.t0);
-      const v=Math.max(vWin,vAll);
-      throwRock(v,clamp(Math.atan2(dx,-dy)*180/Math.PI,-45,45));
-    }else if(Math.abs(dx)>24&&Math.abs(dx)>Math.abs(dy)){dodge(Math.sign(dx));}
+      throwRock(Math.max(vWin,vAll),clamp(Math.atan2(dx,-dy)*180/Math.PI,-45,45));
+    }else if(ptr.y0>=beachBot||ptr.y0>=shoreY+8){pickRock(ptr.x0,ptr.y0);}
+    else msg('START YOUR SWIPE ON THE ROCK',W/2,shoreY-110,'#ffd166',9);
   }
-  else if(ptr.y0<beachBot){if(dist<22)pickRock(ptr.x0,ptr.y0);}
-  else{selectSlot(ptr.x0);}
   ptr=null;
 }
 canvas.addEventListener('pointerup',endPtr);
@@ -646,7 +644,7 @@ function show(id){for(const o of ['title','over','board'])$(o).hidden=o!==id;}
 async function startGame(){
   audioInit();if(AC&&AC.resume)AC.resume();
   muted=$('muteBox').checked;S.tilt.invert=$('invertTilt').checked;
-  await requestTilt();
+  if(USE_TILT)await requestTilt();
   resetGame();S.mode='play';show(null);
   msg('GRAB SOME ROCKS!',W/2,H*0.2,'#ffe66d',12,2);
 }
