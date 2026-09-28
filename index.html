@@ -56,6 +56,11 @@ input[type=text]:focus{outline:3px solid var(--gold);}
 .lab .ds{font-size:12px;color:#d7e2ec;line-height:1.35;margin-top:2px;}
 .lab .btn{padding-block:10px;padding-inline:12px;flex:0 0 auto;font-size:9px;}
 .lab li.sel .nm::after{content:" ✓";color:var(--pink);}
+.knobs{display:grid;gap:10px;margin:0 0 14px;padding-block:12px;padding-inline:10px;background:rgba(255,255,255,.05);border:2px solid rgba(255,255,255,.15);}
+.knob{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;font-size:12px;color:#d7e2ec;}
+.knob .v{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--gold);font-variant-numeric:tabular-nums;}
+.knob input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--pink);margin:0;}
+.knob select{grid-column:1/-1;font-family:'Nunito',system-ui,sans-serif;font-size:13px;padding-block:6px;padding-inline:8px;border:2px solid #000;border-radius:4px;background:#fff;color:var(--ink);}
 @media (prefers-reduced-motion: reduce){.btn:active{transform:none;}}
 </style>
 </head>
@@ -133,6 +138,10 @@ input[type=text]:focus{outline:3px solid var(--gold);}
       <h2>MOO LAB</h2>
       <p class="lede" style="font-size:13px">Tap Play to hear each moo. Tap a row to make it the one the cows use when they're hit or downed.</p>
       <ol class="lab" id="labList"></ol>
+      <h2 style="font-size:10px">CUSTOM KNOBS</h2>
+      <p class="note" style="margin-bottom:8px">These shape the Custom row above. Starts from Nasal. Changes save automatically.</p>
+      <div class="knobs" id="knobs"></div>
+      <div class="row"><button id="labCustomBtn" class="btn primary">Play Custom</button><button id="labResetBtn" class="btn">Reset knobs</button></div>
       <div class="row"><button id="labHurtBtn" class="btn">Hit moo</button><button id="labDownBtn" class="btn">Downed moo</button></div>
       <div class="row"><button id="labBackBtn" class="btn primary">Back</button></div>
     </div>
@@ -168,7 +177,7 @@ let clouds=[],waves=[],speckles=[],trees=[];
 const S={
   mode:'title',score:0,li:0,level:1,kills:0,time:0,camX:0,camTarget:0,
   dodge:{dir:0,t:0},pocket:[],sel:0,beach:[],cows:[],blasts:[],rocks:[],fx:[],msgs:[],
-  shake:0,milkHit:0,spawnT:1,beachT:2,practice:false,bestChain:0,mooIdx:0,
+  shake:0,milkHit:0,spawnT:1,beachT:2,practice:false,bestChain:0,mooIdx:7,custom:null,
   tilt:{ok:false,listening:false,roll:0,g0:null,invert:false},aim:0,aimRaw:0,lastThrowV:0
 };
 
@@ -199,7 +208,7 @@ function buildScenery(){
 }
 
 /* ---------- storage ---------- */
-const LS_KEY='udderly.scores.v1', LS_NAME='udderly.name', LS_MOO='udderly.moo';
+const LS_KEY='udderly.scores.v1', LS_NAME='udderly.name', LS_MOO='udderly.moo', LS_CUSTOM='udderly.moo.custom';
 function loadScores(){try{const v=JSON.parse(localStorage.getItem(LS_KEY)||'[]');return Array.isArray(v)?v:[];}catch(e){return [];}}
 function saveScores(list){try{localStorage.setItem(LS_KEY,JSON.stringify(list));}catch(e){}}
 
@@ -242,14 +251,14 @@ const CONTOUR_CLASSIC=[[0,0.9],[0.15,0.93],[0.35,1.28],[0.6,1.18],[0.85,0.96],[1
 const FORMANTS_OO=[[360,520,320,8,1],[700,1020,650,9,0.6],[2100,3100,2200,10,0.18]];
 const MOO_PRESETS=[
   {name:'CLASSIC',desc:'Closed hum that opens into an "oo" vowel, pitch rises then sags.',source:'sawtooth',detune:9,sub:0.3,f0:120,dur:1.0,vol:0.5,hum:0.22,contour:CONTOUR_CLASSIC,formants:FORMANTS_OO,vib:{hz:6,depth:0.04,from:0.45}},
-  {name:'PULSE VOICE',desc:'Glottal pulse source instead of a buzz. More throat, less synth.',source:'pulse',sub:0.2,f0:110,dur:1.1,vol:0.9,hum:0.2,contour:CONTOUR_CLASSIC,formants:[[400,560,330,7,1],[800,1000,700,8,0.5],[2400,2600,2300,9,0.12]],vib:{hz:5.5,depth:0.035,from:0.4}},
-  {name:'BULL BELLOW',desc:'Deep, slow and long with a rough throat.',source:'sawtooth',detune:6,sub:0.5,f0:72,dur:1.6,vol:0.4,hum:0.25,contour:[[0,0.95],[0.3,1.15],[0.7,1.05],[1,0.8]],formants:[[300,420,280,7,1],[620,800,560,8,0.6],[1800,2200,1700,9,0.15]],vib:{hz:4.5,depth:0.03,from:0.35},rasp:{hz:28,depth:0.35}},
-  {name:'RASPY',desc:'Vocal fry flutter and some grit on top.',source:'sawtooth',detune:12,sub:0.25,f0:125,dur:1.0,vol:0.24,hum:0.18,contour:CONTOUR_CLASSIC,formants:FORMANTS_OO,rasp:{hz:32,depth:0.55},drive:2.5,vib:{hz:6,depth:0.03,from:0.5}},
-  {name:'WAH',desc:'One sweeping resonance, like a wah pedal saying moo.',source:'sawtooth',sub:0.2,f0:125,dur:1.0,vol:1.1,hum:0,attack:0.12,contour:[[0,0.92],[0.4,1.2],[1,0.85]],lp:{type:'bandpass',q:6,a:260,b:1100,c:380,gain:3},vib:{hz:6,depth:0.03,from:0.4}},
-  {name:'HORN',desc:'FM brass. A foghorn with a cow inside it.',source:'fm',fm:{ratio:1,index:2.2},f0:135,dur:0.95,vol:0.85,hum:0,attack:0.15,contour:[[0,0.95],[0.3,1.1],[1,0.9]],lp:{a:600,b:1400,c:700,q:1},vib:{hz:5,depth:0.02,from:0.5}},
+  {name:'PULSE VOICE',desc:'Glottal pulse source, steady fall in pitch from start to finish.',source:'pulse',sub:0.2,f0:118,dur:1.1,vol:0.9,hum:0.2,contour:[[0,1.1],[1,0.82]],formants:[[400,560,330,7,1],[800,1000,700,8,0.5],[2400,2600,2300,9,0.12]],vib:{hz:5.5,depth:0.035,from:0.4}},
+  {name:'BULL BELLOW',desc:'Deep, long and nearly flat, drooping only at the very end.',source:'sawtooth',detune:6,sub:0.5,f0:72,dur:1.6,vol:0.4,hum:0.25,contour:[[0,1.0],[0.8,1.02],[1,0.9]],formants:[[300,420,280,7,1],[620,800,560,8,0.6],[1800,2200,1700,9,0.15]],vib:{hz:4.5,depth:0.03,from:0.35},rasp:{hz:28,depth:0.35}},
+  {name:'RASPY',desc:'Vocal fry flutter and grit, pitch climbs the whole way.',source:'sawtooth',detune:12,sub:0.25,f0:115,dur:1.0,vol:0.24,hum:0.18,contour:[[0,0.85],[1,1.12]],formants:FORMANTS_OO,rasp:{hz:32,depth:0.55},drive:2.5,vib:{hz:6,depth:0.03,from:0.5}},
+  {name:'WAH',desc:'One sweeping resonance. Pitch dips in the middle and recovers.',source:'sawtooth',sub:0.2,f0:125,dur:1.0,vol:1.1,hum:0,attack:0.12,contour:[[0,1.08],[0.45,0.88],[1,1.04]],lp:{type:'bandpass',q:6,a:260,b:1100,c:380,gain:3},vib:{hz:6,depth:0.03,from:0.4}},
+  {name:'HORN',desc:'FM brass, one flat held note like a foghorn.',source:'fm',fm:{ratio:1,index:2.2},f0:135,dur:0.95,vol:0.85,hum:0,attack:0.15,contour:[[0,1.0],[1,1.0]],lp:{a:600,b:1400,c:700,q:1},vib:{hz:5,depth:0.02,from:0.5}},
   {name:'CARTOON',desc:'Smooth tone with a long slide down. Silly on purpose.',source:'triangle',sub:0.15,f0:190,dur:0.9,vol:0.8,hum:0.1,contour:[[0,1.0],[0.2,1.05],[1,0.5]],lp:{a:500,b:1200,c:400,q:2},vib:{hz:7,depth:0.04,from:0.3}},
-  {name:'NASAL',desc:'Long closed M and a tight, nosey vowel.',source:'sawtooth',detune:8,sub:0.3,f0:115,dur:1.1,vol:0.8,hum:0.35,humFreq:230,humGain:0.6,contour:CONTOUR_CLASSIC,formants:[[280,380,260,10,1],[900,1100,850,12,0.35],[2600,2800,2500,10,0.1]],vib:{hz:6,depth:0.03,from:0.5}},
-  {name:'CALF',desc:'Small, high and quick.',source:'sawtooth',detune:10,sub:0.1,f0:210,dur:0.65,vol:0.55,hum:0.12,contour:[[0,0.95],[0.3,1.3],[0.7,1.15],[1,0.9]],formants:[[500,650,450,8,1],[1000,1300,900,9,0.5],[2800,3200,2700,10,0.2]],vib:{hz:7.5,depth:0.05,from:0.3}},
+  {name:'NASAL',desc:'Long closed M, tight nosey vowel, slow gentle descent.',source:'sawtooth',detune:8,sub:0.3,f0:115,dur:1.1,vol:0.8,hum:0.35,humFreq:230,humGain:0.6,contour:[[0,1.03],[0.5,1.0],[1,0.92]],formants:[[280,380,260,10,1],[900,1100,850,12,0.35],[2600,2800,2500,10,0.1]],vib:{hz:6,depth:0.03,from:0.5}},
+  {name:'CALF',desc:'Small, high and quick, with a wobbling pitch.',source:'sawtooth',detune:10,sub:0.1,f0:210,dur:0.7,vol:0.55,hum:0.12,contour:[[0,1.0],[0.2,1.15],[0.4,0.92],[0.6,1.12],[0.8,0.95],[1,1.0]],formants:[[500,650,450,8,1],[1000,1300,900,9,0.5],[2800,3200,2700,10,0.2]],vib:{hz:7.5,depth:0.05,from:0.3}},
   {name:'TWO-NOTE',desc:'"mu-OOO". Jumps up a fourth, then settles.',source:'sawtooth',detune:7,sub:0.3,f0:115,dur:1.15,vol:0.5,hum:0.2,contour:[[0,1.0],[0.3,1.0],[0.36,1.33],[0.7,1.3],[1,1.0]],formants:[[600,380,330,7,1],[1000,760,680,8,0.55],[2400,2200,2100,10,0.15]],vib:{hz:6,depth:0.035,from:0.5}}
 ];
 function synthMoo(o,variant){
@@ -282,7 +291,45 @@ function synthMoo(o,variant){
   else{const lp=AC.createBiquadFilter();lp.type=o.lp.type||'lowpass';lp.Q.value=o.lp.q||1;lp.frequency.setValueAtTime(o.lp.a,t);lp.frequency.linearRampToValueAtTime(o.lp.b,t+dur*0.4);lp.frequency.linearRampToValueAtTime(o.lp.c,t+dur);const lg=AC.createGain();lg.gain.value=o.lp.gain||1;voice.connect(lp).connect(lg).connect(vg);}
   for(const n of nodes){n.start(t);n.stop(stopAt);}
 }
-function mooPreset(){return MOO_PRESETS[clamp(S.mooIdx|0,0,MOO_PRESETS.length-1)];}
+const CUSTOM_DEF={f0:115,dur:1.1,hum:0.35,humFreq:230,open:0.15,move:0.3,shape:'fall',range:0.08,vibDepth:0.03,vibHz:6,rasp:0,sub:0.3,detune:8,q:10,vol:0.8};
+const KNOBS=[
+  ['f0','Pitch',60,260,1,v=>v+' Hz'],
+  ['dur','Length',0.4,2.2,0.05,v=>v.toFixed(2)+' s'],
+  ['shape','Pitch shape',null,null,null,null],
+  ['range','Pitch movement',0,0.5,0.01,v=>Math.round(v*100)+'%'],
+  ['hum','M hum length',0,0.6,0.01,v=>v.toFixed(2)+' s'],
+  ['humFreq','M hum darkness',120,600,5,v=>v+' Hz'],
+  ['open','Vowel openness (oo to ah)',0,1,0.01,v=>Math.round(v*100)+'%'],
+  ['move','Vowel movement',0,1,0.01,v=>Math.round(v*100)+'%'],
+  ['q','Vowel resonance',3,16,0.5,v=>v.toFixed(1)],
+  ['vibDepth','Vibrato depth',0,0.1,0.005,v=>Math.round(v*100)+'%'],
+  ['vibHz','Vibrato rate',2,10,0.1,v=>v.toFixed(1)+' Hz'],
+  ['rasp','Rasp',0,0.8,0.01,v=>Math.round(v*100)+'%'],
+  ['sub','Chest (sub octave)',0,0.7,0.01,v=>Math.round(v*100)+'%'],
+  ['detune','Thickness (detune)',0,25,1,v=>v+' cents'],
+  ['vol','Volume',0.1,1.5,0.05,v=>Math.round(v*100)+'%']
+];
+const SHAPES={flat:'Flat',fall:'Steady fall',rise:'Steady rise',risefall:'Rise then fall',fallrise:'Dip then recover',stepup:'Two-note up',stepdown:'Two-note down',wobble:'Wobble'};
+function shapeContour(shape,a){
+  switch(shape){
+    case 'rise':return [[0,1-a],[1,1+a]];
+    case 'fall':return [[0,1+a],[1,1-a]];
+    case 'risefall':return [[0,1-a*0.5],[0.35,1+a],[1,1-a]];
+    case 'fallrise':return [[0,1+a*0.5],[0.4,1-a],[1,1+a*0.5]];
+    case 'stepup':return [[0,1],[0.3,1],[0.34,1+a*1.5],[1,1+a]];
+    case 'stepdown':return [[0,1+a],[0.4,1+a],[0.44,1-a*0.5],[1,1-a]];
+    case 'wobble':return [[0,1],[0.2,1+a],[0.4,1-a],[0.6,1+a],[0.8,1-a],[1,1]];
+    default:return [[0,1],[1,1]];
+  }
+}
+function customPreset(){
+  const c=S.custom,F1=250+400*c.open,F2=850+300*c.open,m=1+c.move*0.6;
+  return {name:'CUSTOM',source:'sawtooth',detune:c.detune,sub:c.sub,f0:c.f0,dur:c.dur,vol:c.vol,hum:c.hum,humFreq:c.humFreq,humGain:0.6,
+    contour:shapeContour(c.shape,c.range),
+    formants:[[F1,F1*m,F1*0.9,c.q,1],[F2,F2*m,F2*0.92,c.q*1.2,0.35],[2600,2800,2500,10,0.1]],
+    vib:{hz:c.vibHz,depth:c.vibDepth,from:0.5},rasp:c.rasp>0?{hz:30,depth:c.rasp}:null};
+}
+function mooPreset(){return S.mooIdx>=MOO_PRESETS.length?customPreset():MOO_PRESETS[clamp(S.mooIdx|0,0,MOO_PRESETS.length-1)];}
 function spray(vol){
   if(!AC||muted)return;
   const t=AC.currentTime,sr=AC.sampleRate,dur=0.55,n=Math.floor(sr*dur);
@@ -795,17 +842,38 @@ function resetGame(){
 }
 function show(id){for(const o of ['title','over','board','pause','lab'])$(o).hidden=o!==id;}
 function labAudio(){audioInit();if(AC&&AC.resume)AC.resume();muted=$('muteBox').checked;}
+function saveCustom(){try{localStorage.setItem(LS_CUSTOM,JSON.stringify(S.custom));}catch(e){}}
 function renderLab(){
   const el=$('labList');el.innerHTML='';
-  MOO_PRESETS.forEach((pr,i)=>{
-    const li=document.createElement('li');li.className=i===S.mooIdx?'sel':'';
-    li.innerHTML=`<div><div class="nm">${i+1}. ${pr.name}</div><div class="ds">${pr.desc}</div></div><button class="btn" type="button">Play</button>`;
-    li.querySelector('button').addEventListener('click',e=>{e.stopPropagation();labAudio();synthMoo(pr);});
-    li.addEventListener('click',()=>{S.mooIdx=i;try{localStorage.setItem(LS_MOO,String(i));}catch(e){}renderLab();labAudio();synthMoo(pr);});
+  const rows=MOO_PRESETS.map((pr,i)=>({i,name:pr.name,desc:pr.desc,get:()=>pr}));
+  rows.push({i:MOO_PRESETS.length,name:'CUSTOM',desc:'Your own mix from the knobs below.',get:customPreset});
+  rows.forEach(r=>{
+    const li=document.createElement('li');li.className=r.i===S.mooIdx?'sel':'';
+    li.innerHTML=`<div><div class="nm">${r.i+1}. ${r.name}</div><div class="ds">${r.desc}</div></div><button class="btn" type="button">Play</button>`;
+    li.querySelector('button').addEventListener('click',e=>{e.stopPropagation();labAudio();synthMoo(r.get());});
+    li.addEventListener('click',()=>{S.mooIdx=r.i;try{localStorage.setItem(LS_MOO,String(r.i));}catch(e){}renderLab();labAudio();synthMoo(r.get());});
     el.appendChild(li);
   });
 }
-$('labBtn').addEventListener('click',()=>{renderLab();show('lab');});
+function renderKnobs(){
+  const el=$('knobs');el.innerHTML='';
+  for(const [key,label,min,max,step,fmt] of KNOBS){
+    const d=document.createElement('div');d.className='knob';
+    if(key==='shape'){
+      d.innerHTML=`<label for="knob_shape">${label}</label><span class="v"></span><select id="knob_shape">${Object.entries(SHAPES).map(([k,v])=>`<option value="${k}"${S.custom.shape===k?' selected':''}>${v}</option>`).join('')}</select>`;
+      d.querySelector('select').addEventListener('change',e=>{S.custom.shape=e.target.value;saveCustom();});
+    }else{
+      d.innerHTML=`<label for="knob_${key}">${label}</label><span class="v" id="knobv_${key}">${fmt(S.custom[key])}</span><input type="range" id="knob_${key}" min="${min}" max="${max}" step="${step}" value="${S.custom[key]}">`;
+      d.querySelector('input').addEventListener('input',e=>{S.custom[key]=parseFloat(e.target.value);$('knobv_'+key).textContent=fmt(S.custom[key]);saveCustom();});
+    }
+    el.appendChild(d);
+  }
+}
+$('labBtn').addEventListener('click',()=>{renderLab();renderKnobs();show('lab');});
+$('labCustomBtn').addEventListener('click',()=>{labAudio();synthMoo(customPreset());});
+$('labResetBtn').addEventListener('click',()=>{S.custom=Object.assign({},CUSTOM_DEF);saveCustom();renderKnobs();});
+try{const c=JSON.parse(localStorage.getItem(LS_CUSTOM));S.custom=Object.assign({},CUSTOM_DEF,c&&typeof c==='object'?c:{});}catch(e){S.custom=Object.assign({},CUSTOM_DEF);}
+if(!S.custom)S.custom=Object.assign({},CUSTOM_DEF);
 $('labBackBtn').addEventListener('click',()=>show('title'));
 $('labHurtBtn').addEventListener('click',()=>{labAudio();synthMoo(mooPreset(),'hurt');});
 $('labDownBtn').addEventListener('click',()=>{labAudio();synthMoo(mooPreset(),'down');});
