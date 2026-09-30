@@ -139,7 +139,7 @@ input[type=text]:focus{outline:3px solid var(--gold);}
       <p class="lede" style="font-size:13px">Tap Play to hear each moo. Tap a row to make it the one the cows use when they're hit or downed.</p>
       <ol class="lab" id="labList"></ol>
       <h2 style="font-size:10px">CUSTOM KNOBS</h2>
-      <p class="note" style="margin-bottom:8px">These shape the Custom row above. Starts from Nasal. Changes save automatically.</p>
+      <p class="note" style="margin-bottom:8px">These shape the Custom row above, which is the game's default moo. Changes save automatically.</p>
       <div class="knobs" id="knobs"></div>
       <div class="row"><button id="labCustomBtn" class="btn primary">Play Custom</button><button id="labResetBtn" class="btn">Reset knobs</button></div>
       <div class="row"><button id="labHurtBtn" class="btn">Hit moo</button><button id="labDownBtn" class="btn">Downed moo</button></div>
@@ -169,7 +169,7 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const TAU=Math.PI*2;
 const PIX='"Press Start 2P", monospace';
 
-const CAM_H=1.7, SHORE_Z=2, POCKET_MAX=8, BEACH_MAX=14, IDEAL_V=2.0;
+const CAM_H=1.7, SHORE_Z=2, POCKET_MAX=8, BEACH_MAX=14, IDEAL_V=2.0, MOO_PRESETS_COUNT=10;
 const YS=1.5, ROCK_G=12, LANE=1.4, USE_TILT=false, EYE_Y=(CAM_H-0.15)/YS;
 let W=0,H=0,DPR=1,HUD_H=64,horizonY=0,shoreY=0,beachTop=0,beachBot=0,pocketTop=0,F=1;
 let clouds=[],waves=[],speckles=[],trees=[];
@@ -177,7 +177,7 @@ let clouds=[],waves=[],speckles=[],trees=[];
 const S={
   mode:'title',score:0,li:0,level:1,kills:0,time:0,camX:0,camTarget:0,
   dodge:{dir:0,t:0},pocket:[],sel:0,beach:[],cows:[],blasts:[],rocks:[],fx:[],msgs:[],
-  shake:0,milkHit:0,spawnT:1,beachT:2,practice:false,bestChain:0,mooIdx:7,custom:null,
+  shake:0,milkHit:0,spawnT:1,beachT:2,practice:false,bestChain:0,mooIdx:MOO_PRESETS_COUNT,custom:null,
   tilt:{ok:false,listening:false,roll:0,g0:null,invert:false},aim:0,aimRaw:0,lastThrowV:0
 };
 
@@ -265,8 +265,8 @@ function synthMoo(o,variant){
   if(!AC||muted)return;
   const t=AC.currentTime;
   let f=o.f0*rand(0.95,1.05),dur=o.dur,contour=o.contour;
-  if(variant==='hurt'){f*=1.25;dur*=0.55;contour=[[0,1.1],[0.3,1.3],[1,0.9]];}
-  if(variant==='down'){f*=0.95;dur*=1.3;contour=[[0,1.0],[0.2,1.06],[0.5,0.82],[0.8,0.62],[1,0.5]];}
+  if(variant==='hurt'){f*=1.25;dur=Math.min(0.9,dur*0.55);contour=[[0,1.1],[0.3,1.3],[1,0.9]];}
+  if(variant==='down'){f*=0.95;dur=Math.min(2.2,dur*1.3);contour=[[0,1.0],[0.2,1.06],[0.5,0.82],[0.8,0.62],[1,0.5]];}
   const stopAt=t+dur+0.15,nodes=[];
   const mkOsc=(type,mult,det)=>{const osc=AC.createOscillator();if(type==='pulse')osc.setPeriodicWave(pulseWave());else osc.type=type;if(det)osc.detune.value=det;
     osc.frequency.setValueAtTime(f*contour[0][1]*mult,t);for(const [k,v] of contour.slice(1))osc.frequency.linearRampToValueAtTime(f*v*mult,t+k*dur);nodes.push(osc);return osc;};
@@ -291,7 +291,7 @@ function synthMoo(o,variant){
   else{const lp=AC.createBiquadFilter();lp.type=o.lp.type||'lowpass';lp.Q.value=o.lp.q||1;lp.frequency.setValueAtTime(o.lp.a,t);lp.frequency.linearRampToValueAtTime(o.lp.b,t+dur*0.4);lp.frequency.linearRampToValueAtTime(o.lp.c,t+dur);const lg=AC.createGain();lg.gain.value=o.lp.gain||1;voice.connect(lp).connect(lg).connect(vg);}
   for(const n of nodes){n.start(t);n.stop(stopAt);}
 }
-const CUSTOM_DEF={f0:115,dur:1.1,hum:0.35,humFreq:230,open:0.15,move:0.3,shape:'fall',range:0.08,vibDepth:0.03,vibHz:6,rasp:0,sub:0.3,detune:8,q:10,vol:0.8};
+const CUSTOM_DEF={f0:115,dur:1.95,hum:0.54,humFreq:155,open:0,move:0.36,shape:'risefall',range:0.35,vibDepth:0.01,vibHz:5,rasp:0,sub:0.27,detune:15,q:11.5,vol:0.65};
 const KNOBS=[
   ['f0','Pitch',60,260,1,v=>v+' Hz'],
   ['dur','Length',0.4,2.2,0.05,v=>v.toFixed(2)+' s'],
@@ -846,7 +846,7 @@ function saveCustom(){try{localStorage.setItem(LS_CUSTOM,JSON.stringify(S.custom
 function renderLab(){
   const el=$('labList');el.innerHTML='';
   const rows=MOO_PRESETS.map((pr,i)=>({i,name:pr.name,desc:pr.desc,get:()=>pr}));
-  rows.push({i:MOO_PRESETS.length,name:'CUSTOM',desc:'Your own mix from the knobs below.',get:customPreset});
+  rows.push({i:MOO_PRESETS.length,name:'CUSTOM',desc:'The default moo. Tune it with the knobs below.',get:customPreset});
   rows.forEach(r=>{
     const li=document.createElement('li');li.className=r.i===S.mooIdx?'sel':'';
     li.innerHTML=`<div><div class="nm">${r.i+1}. ${r.name}</div><div class="ds">${r.desc}</div></div><button class="btn" type="button">Play</button>`;
