@@ -14,6 +14,11 @@ Everything lives in one file, `index.html`. Open it on a phone (portrait) and pl
 - **PAUSE** in the top-left corner (or the Escape or P key) opens a menu with resume, restart and quit to title. The game also pauses itself when the app goes to the background.
 - **Practice** from the title screen is the same beach with no cows, for working on your skip chain. The HUD tracks your best chain instead of a wave and lactose meter.
 
+## Credits
+
+- Cow moo: ["Single Cow Moo"](https://commons.wikimedia.org/wiki/File:Single_Cow_Moo.ogg) by MichaeltheFox8621, licensed [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), via Wikimedia Commons. Trimmed, mixed to mono and downsampled to 11 kHz 8-bit for embedding in `index.html`. Under the share-alike term, that modified clip remains CC BY-SA 4.0.
+- Every other sound is synthesized in Web Audio at runtime.
+
 ## Notes
 
 Aiming by phone tilt was tried and shelved. The code path is still in `index.html` behind the `USE_TILT` flag but it is off, and nothing in the game asks for motion permission.
