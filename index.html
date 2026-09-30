@@ -75,8 +75,8 @@ input[type=text]:focus{outline:3px solid var(--gold);}
       <p class="lede">Skip flat rocks at the flying cows before their milk pushes your lactose intolerance to 100%.</p>
       <ul class="how">
         <li><b>Tap rocks</b> on the beach to pocket them. Flat, palm-sized, mid-weight rocks skip best.</li>
-        <li><b>Swipe up from the rock in your hand</b> to throw. A quick, clean flick is ideal. Too soft plops, too hard plunges. Angle your swipe to aim.</li>
-        <li><b>Swipe sideways anywhere</b> to step left or right. You stay there until you step again.</li>
+        <li><b>Flick from the rock in your hand</b> to throw, in any direction inside the dotted ring. A quick, clean flick is ideal. Too soft plops, too hard plunges. The direction of your flick aims.</li>
+        <li><b>Swipe sideways outside the ring</b> to step left or right. You stay there until you step again.</li>
         <li>Cows fly low over the water and shoot milk. Step out of the way before it lands.</li>
         <li>Cows get tougher and faster each wave. Hit 100% lactose and it's over.</li>
       </ul>
@@ -136,13 +136,12 @@ input[type=text]:focus{outline:3px solid var(--gold);}
     <div class="card">
       <p class="eyebrow">Prototype</p>
       <h2>MOO LAB</h2>
-      <p class="lede" style="font-size:13px">Tap Play to hear each moo. Tap a row to make it the one the cows use when they're hit or downed.</p>
+      <p class="lede" style="font-size:13px">Tap Play to hear each moo. Tap a row to make it the one the cows use.</p>
       <ol class="lab" id="labList"></ol>
       <h2 style="font-size:10px">CUSTOM KNOBS</h2>
       <p class="note" style="margin-bottom:8px">These shape the Custom row above, which is the game's default moo. Changes save automatically.</p>
       <div class="knobs" id="knobs"></div>
       <div class="row"><button id="labCustomBtn" class="btn primary">Play Custom</button><button id="labResetBtn" class="btn">Reset knobs</button></div>
-      <div class="row"><button id="labHurtBtn" class="btn">Hit moo</button><button id="labDownBtn" class="btn">Downed moo</button></div>
       <div class="row"><button id="labBackBtn" class="btn primary">Back</button></div>
     </div>
   </div>
@@ -170,7 +169,7 @@ const TAU=Math.PI*2;
 const PIX='"Press Start 2P", monospace';
 
 const CAM_H=1.7, SHORE_Z=2, POCKET_MAX=8, BEACH_MAX=14, IDEAL_V=2.0, MOO_PRESETS_COUNT=10;
-const YS=1.5, ROCK_G=12, LANE=1.4, USE_TILT=false, EYE_Y=(CAM_H-0.15)/YS;
+const YS=1.5, ROCK_G=12, LANE=1.4, USE_TILT=false, EYE_Y=(CAM_H-0.15)/YS, AIM_MAX=60;
 let W=0,H=0,DPR=1,HUD_H=64,horizonY=0,shoreY=0,beachTop=0,beachBot=0,pocketTop=0,F=1;
 let clouds=[],waves=[],speckles=[],trees=[];
 
@@ -362,8 +361,8 @@ const SFX={
   plunk(){tone(300,110,0.25,'sine',0.2);noise(0.12,0.1,900);},
   hit(){tone(220,80,0.2,'square',0.14);noise(0.1,0.15,800);},
   moo(){synthMoo(mooPreset());},
-  mooHurt(){synthMoo(mooPreset(),'hurt');},
-  mooDown(){synthMoo(mooPreset(),'down');},
+  mooHurt(){synthMoo(mooPreset());},
+  mooDown(){synthMoo(mooPreset());},
   spray(){spray(0.6);},
   splat(){
     noiseBand(0.22,0.5,1400,250,0.8,0.005);
@@ -687,7 +686,7 @@ function drawHeldRock(t){
   const rock=S.pocket[S.sel],rr=16+rock.size*12;
   ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(hp.x+3,hp.y+rr*0.6,rr*rock.aspect*0.9,rr*0.45,0,0,TAU);ctx.fill();
   drawRock(hp.x,hp.y+Math.sin(t*3)*2,rr,rock,rock.rot+Math.sin(t)*0.1);
-  if(S.time<12){ctx.fillStyle='rgba(255,255,255,.85)';ctx.font=`8px ${PIX}`;ctx.textAlign='center';ctx.fillText('SWIPE UP FROM HERE',hp.x,hp.y-zr-8);}
+  if(S.time<12){ctx.fillStyle='rgba(255,255,255,.85)';ctx.font=`8px ${PIX}`;ctx.textAlign='center';ctx.fillText('FLICK FROM HERE',hp.x,hp.y-zr-8);}
 }
 function drawBeach(t){
   ctx.fillStyle='#b8a27c';ctx.fillRect(0,shoreY-2,W,14);
@@ -744,7 +743,7 @@ function drawHUD(){
     ctx.fillStyle='#fff8f0';ctx.beginPath();ctx.roundRect(12,36,58,20,4);ctx.fill();
     ctx.fillStyle='#1d2229';ctx.textAlign='center';ctx.fillText(S.mode==='pause'?'PLAY':'PAUSE',41,47);
   }
-  if(S.time<12&&!S.practice){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText('SWIPE < > TO STEP ASIDE',W/2,49);}
+  if(S.time<12&&!S.practice){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText('SWIPE < > OUTSIDE THE RING TO STEP',W/2,49);}
   ctx.textBaseline='alphabetic';
 }
 const DRIPS=[[0.06,26,0.9],[0.2,18,0.5],[0.33,34,1.1],[0.5,22,0.7],[0.64,30,1.0],[0.8,20,0.6],[0.93,28,0.8]];
@@ -785,7 +784,7 @@ canvas.addEventListener('pointermove',e=>{
   if(!ptr||e.pointerId!==ptr.id)return;const p=localPos(e);
   ptr.hist.push({x:p.x,y:p.y,t:performance.now()});if(ptr.hist.length>40)ptr.hist.shift();
   const dx=p.x-ptr.x0,dy=p.y-ptr.y0,hp=heldRockPos();
-  if(dy<-16&&-dy>=Math.abs(dx)&&Math.hypot(ptr.x0-hp.x,ptr.y0-hp.y)<throwZoneR())ptr.aim=clamp(Math.atan2(dx,-dy)*180/Math.PI,-45,45);else delete ptr.aim;
+  if(Math.hypot(dx,dy)>16&&Math.hypot(ptr.x0-hp.x,ptr.y0-hp.y)<throwZoneR())ptr.aim=clamp(Math.atan2(dx,-dy)*180/Math.PI,-AIM_MAX,AIM_MAX);else delete ptr.aim;
 });
 function endPtr(e){
   if(!ptr||e.pointerId!==ptr.id)return;
@@ -798,15 +797,16 @@ function endPtr(e){
     else if(ptr.y0>=shoreY+8)pickRock(ptr.x0,ptr.y0);
     else if(ptr.y0>=HUD_H){if(S.pocket.length)msg('SWIPE UP FROM THE ROCK TO THROW',W/2,shoreY-110,'#fff',9);else msg('POCKET EMPTY! GRAB ROCKS BELOW',W/2,shoreY-110,'#ffd166',10);}
   }
+  else if(inZone){
+    const h=ptr.hist,last=h[h.length-1];let j=h.length-1;while(j>0&&last.t-h[j-1].t<120)j--;
+    const a=h[j],vWin=Math.hypot(last.x-a.x,last.y-a.y)/Math.max(16,last.t-a.t);
+    const vAll=dist/Math.max(16,t-ptr.t0);
+    throwRock(Math.max(vWin,vAll),clamp(Math.atan2(dx,-dy)*180/Math.PI,-AIM_MAX,AIM_MAX));
+  }
   else if(Math.abs(dx)>Math.abs(dy)){dodge(Math.sign(dx));}
   else if(dy<0){
-    if(inZone){
-      const h=ptr.hist,last=h[h.length-1];let j=h.length-1;while(j>0&&last.t-h[j-1].t<120)j--;
-      const a=h[j],vWin=Math.hypot(last.x-a.x,last.y-a.y)/Math.max(16,last.t-a.t);
-      const vAll=dist/Math.max(16,t-ptr.t0);
-      throwRock(Math.max(vWin,vAll),clamp(Math.atan2(dx,-dy)*180/Math.PI,-45,45));
-    }else if(ptr.y0>=beachBot||ptr.y0>=shoreY+8){pickRock(ptr.x0,ptr.y0);}
-    else msg('START YOUR SWIPE ON THE ROCK',W/2,shoreY-110,'#ffd166',9);
+    if(ptr.y0>=shoreY+8)pickRock(ptr.x0,ptr.y0);
+    else msg('START YOUR FLICK ON THE ROCK',W/2,shoreY-110,'#ffd166',9);
   }
   ptr=null;
 }
@@ -875,8 +875,6 @@ $('labResetBtn').addEventListener('click',()=>{S.custom=Object.assign({},CUSTOM_
 try{const c=JSON.parse(localStorage.getItem(LS_CUSTOM));S.custom=Object.assign({},CUSTOM_DEF,c&&typeof c==='object'?c:{});}catch(e){S.custom=Object.assign({},CUSTOM_DEF);}
 if(!S.custom)S.custom=Object.assign({},CUSTOM_DEF);
 $('labBackBtn').addEventListener('click',()=>show('title'));
-$('labHurtBtn').addEventListener('click',()=>{labAudio();synthMoo(mooPreset(),'hurt');});
-$('labDownBtn').addEventListener('click',()=>{labAudio();synthMoo(mooPreset(),'down');});
 try{const m=parseInt(localStorage.getItem(LS_MOO));if(!isNaN(m))S.mooIdx=clamp(m,0,MOO_PRESETS.length-1);}catch(e){}
 async function startGame(practice){
   audioInit();if(AC&&AC.resume)AC.resume();

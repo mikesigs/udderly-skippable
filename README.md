@@ -7,8 +7,8 @@ Everything lives in one file, `index.html`. Open it on a phone (portrait) and pl
 ## How to play
 
 - **Tap rocks on the beach** to put them in your pocket (holds 8). Flat, palm-sized, mid-weight rocks skip best. The pocket bar shows a star rating, flatness, circumference and weight for the selected rock. Tap a pocket slot to choose which rock you throw next.
-- **Swipe up from the rock in your hand** to throw. Start inside the dotted ring around it. Flick speed matters: a quick, clean flick is ideal, a slow push plops, a violent one plunges. The angle of your swipe aims the throw.
-- **Swipe sideways anywhere** to step one lane left or right. You stay there until you step again, so move before a milk blast lands.
+- **Flick from the rock in your hand** to throw. Any flick that starts inside the dotted ring throws, and its direction aims the rock. Flick speed matters: a quick, clean flick is ideal, a slow push plops, a violent one plunges.
+- **Swipe sideways outside the ring** to step one lane left or right. You stay there until you step again, so move before a milk blast lands.
 - Points for every skip, every hit and every downed cow, with a bonus for long skip chains. Cows get tougher and faster each wave.
 - At 100% lactose intolerance the game ends and you can enter your name on the local top-10 leaderboard.
 - **PAUSE** in the top-left corner (or the Escape or P key) opens a menu with resume, restart and quit to title. The game also pauses itself when the app goes to the background.
