@@ -32,7 +32,7 @@ void main(){
 }`;
 
 const WATER_VERT = `
-uniform float uTime; varying vec3 vWorld; varying vec3 vNormal;
+uniform float uTime, uShoreZ; varying vec3 vWorld; varying vec3 vNormal;
 void wave(vec2 p, out float h, out vec2 g){
   float t = uTime;
   vec2 d1 = normalize(vec2(0.8, 0.6)), d2 = normalize(vec2(-0.5, 0.9)), d3 = normalize(vec2(0.2, -1.0)), d4 = normalize(vec2(1.0, 0.1));
@@ -45,6 +45,8 @@ void wave(vec2 p, out float h, out vec2 g){
 void main(){
   vec4 wp = modelMatrix * vec4(position, 1.0);
   float h; vec2 g; wave(wp.xz, h, g);
+  float calm = smoothstep(0.0, 6.0, uShoreZ - wp.z);
+  h *= calm; g *= calm;
   wp.y += h; vWorld = wp.xyz; vNormal = normalize(vec3(-g.x, 1.0, -g.y));
   gl_Position = projectionMatrix * viewMatrix * wp;
 }`;
@@ -127,7 +129,7 @@ export class World {
     };
     const mat = new THREE.ShaderMaterial({ vertexShader: WATER_VERT, fragmentShader: WATER_FRAG, uniforms: this.waterUniforms });
     const water = this.water = new THREE.Mesh(geo, mat);
-    water.position.set(0, 0, SHORE_Z - 140 + 0.5);
+    water.position.set(0, -0.01, SHORE_Z - 140);
     this.scene.add(water);
   }
 
