@@ -16,7 +16,7 @@ src/render/world.js     Three.js scene: sky, sun, water shader, beach, forest, m
 src/render/cow.js       Cow model factory (toon-shaded primitives) and animation
 src/render/rockmesh.js  Faceted 3D rocks from rock stats
 src/render/fx.js        Splash rings, droplets, sand puffs, milk blasts, aim guide
-src/audio/sfx.js        Synthesized effects, ambient water, moo voices
+src/audio/sfx.js        Synthesized effects, ambient water, generative music, moo voices
 src/audio/moo-sample.js Embedded cow recording (see Credits)
 src/ui/ui.js            HUD, pocket, messages, screens, leaderboard, settings
 public/                 Icons and web manifest
@@ -42,7 +42,7 @@ npm run android:sync   # builds the web app and copies it into android/
 npm run android:open   # opens the project in Android Studio
 ```
 
-GitHub Actions builds it on every push (`.github/workflows/android.yml`) and uploads two artifacts: a debug APK you can sideload, and an unsigned release AAB. To publish on Google Play you sign the AAB with your upload key, either in Android Studio or by adding a `signingConfigs` block to `android/app/build.gradle` fed from repository secrets.
+GitHub Actions builds it on every push (`.github/workflows/android.yml`) and uploads two artifacts: a debug APK you can sideload, and an unsigned release AAB. To get the APK: open the repository's **Actions** tab, pick the latest **Android build** run, and download `udderly-skippable-debug-apk` from the Artifacts section at the bottom. Unzip it and install `app-debug.apk` on the phone (allow installs from unknown sources when asked). To publish on Google Play you sign the AAB with your upload key, either in Android Studio or by adding a `signingConfigs` block to `android/app/build.gradle` fed from repository secrets.
 
 Play Store checklist still to do: app signing key, store listing screenshots, privacy policy URL (the game stores scores and settings locally only, no network calls), content rating questionnaire.
 
