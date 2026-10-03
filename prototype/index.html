@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Udderly Skippable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@600;800&display=swap">
+<style>
+:root{
+  --ink:#1d2229; --milk:#fff8f0; --pink:#f28ca8; --pinkdeep:#d6557f; --gold:#ffe66d;
+  --panel:rgba(18,26,36,.9); --btn:#f7f0e2; --sky:#4f9fdc;
+  color-scheme: light;
+}
+html,body{height:100%;margin:0;overflow:hidden;background:#0f1a24;}
+[hidden]{display:none!important;}
+body{font-family:'Nunito',system-ui,sans-serif;color:var(--milk);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;}
+#game{position:relative;width:100%;height:100%;background:var(--sky);}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;padding-block:20px;padding-inline:16px;background:rgba(8,16,26,.72);overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;}
+.card{width:100%;max-width:400px;margin-block:auto;flex:0 0 auto;background:var(--panel);border:3px solid var(--milk);border-radius:8px;padding-block:20px;padding-inline:18px;box-shadow:0 8px 0 #000;box-sizing:border-box;}
+.eyebrow{font-family:'Press Start 2P',monospace;font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#9fd3ff;margin:0 0 10px;}
+h1{font-family:'Press Start 2P',monospace;font-size:clamp(17px,5.4vw,24px);line-height:1.4;margin:0 0 10px;color:var(--pink);text-shadow:3px 3px 0 #000;text-wrap:balance;}
+h2{font-family:'Press Start 2P',monospace;font-size:14px;line-height:1.5;margin:0 0 10px;color:var(--gold);text-shadow:2px 2px 0 #000;}
+p{margin:0;line-height:1.45;font-size:15px;}
+.lede{margin-bottom:12px;}
+.how{list-style:none;padding:0;margin:0 0 16px;display:grid;gap:7px;font-size:14px;line-height:1.4;}
+.how li{padding-left:22px;position:relative;}
+.how li::before{content:"";position:absolute;left:0;top:6px;width:10px;height:10px;background:var(--pink);border:2px solid #000;}
+.how b{color:var(--gold);}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.row.small{gap:16px;font-size:13px;align-items:center;}
+.row.small label{display:flex;align-items:center;gap:6px;}
+.btn{font-family:'Press Start 2P',monospace;font-size:10px;line-height:1;padding-block:14px;padding-inline:16px;background:var(--btn);color:var(--ink);border:3px solid #000;border-radius:4px;box-shadow:0 4px 0 #000;cursor:pointer;flex:1 1 auto;}
+.btn.primary{background:var(--pink);}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #000;}
+.btn:focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
+.note{font-size:12px;color:#b8c7d6;line-height:1.4;}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
+.stat{background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.18);padding-block:8px;padding-inline:8px;text-align:center;}
+.stat .v{font-family:'Press Start 2P',monospace;font-size:14px;color:var(--gold);font-variant-numeric:tabular-nums;}
+.stat .k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#b8c7d6;margin-top:6px;}
+input[type=text]{font-family:'Press Start 2P',monospace;font-size:12px;text-transform:uppercase;padding-block:12px;padding-inline:12px;border:3px solid #000;border-radius:4px;background:#fff;color:var(--ink);width:100%;box-sizing:border-box;margin-bottom:10px;}
+input[type=text]:focus{outline:3px solid var(--gold);}
+.board{list-style:none;padding:0;margin:0 0 14px;display:grid;gap:4px;font-family:'Press Start 2P',monospace;font-size:10px;line-height:1.4;font-variant-numeric:tabular-nums;}
+.board li{display:grid;grid-template-columns:28px 1fr auto;gap:8px;padding-block:7px;padding-inline:8px;background:rgba(255,255,255,.06);align-items:center;}
+.board li.me{background:rgba(242,140,168,.28);outline:2px solid var(--pink);}
+.board li .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.board li .r{color:#9fd3ff;}
+.board li .w{font-size:8px;color:#b8c7d6;}
+.empty{font-size:13px;color:#b8c7d6;margin-bottom:14px;}
+.lab{list-style:none;padding:0;margin:0 0 14px;display:grid;gap:6px;}
+.lab li{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding-block:8px;padding-inline:10px;background:rgba(255,255,255,.06);border:2px solid transparent;cursor:pointer;}
+.lab li.sel{border-color:var(--pink);background:rgba(242,140,168,.2);}
+.lab .nm{font-family:'Press Start 2P',monospace;font-size:9px;line-height:1.5;color:var(--gold);}
+.lab .ds{font-size:12px;color:#d7e2ec;line-height:1.35;margin-top:2px;}
+.lab .btn{padding-block:10px;padding-inline:12px;flex:0 0 auto;font-size:9px;}
+.lab li.sel .nm::after{content:" ✓";color:var(--pink);}
+.knobs{display:grid;gap:10px;margin:0 0 14px;padding-block:12px;padding-inline:10px;background:rgba(255,255,255,.05);border:2px solid rgba(255,255,255,.15);}
+.knob{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;font-size:12px;color:#d7e2ec;}
+.knob .v{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--gold);font-variant-numeric:tabular-nums;}
+.knob input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--pink);margin:0;}
+.knob select{grid-column:1/-1;font-family:'Nunito',system-ui,sans-serif;font-size:13px;padding-block:6px;padding-inline:8px;border:2px solid #000;border-radius:4px;background:#fff;color:var(--ink);}
+@media (prefers-reduced-motion: reduce){.btn:active{transform:none;}}
+</style>
+</head>
+<body>
+<div id="game">
+  <canvas id="c"></canvas>
+
+  <div id="title" class="overlay">
+    <div class="card">
+      <p class="eyebrow">Lakeside Cow Combat</p>
+      <h1>UDDERLY SKIPPABLE</h1>
+      <p class="lede">Skip flat rocks at the flying cows before their milk pushes your lactose intolerance to 100%.</p>
+      <ul class="how">
+        <li><b>Tap rocks</b> on the beach to pocket them. Flat, palm-sized, mid-weight rocks skip best.</li>
+        <li><b>Flick from the rock in your hand</b> to throw, in any direction inside the dotted ring. A quick, clean flick is ideal. Too soft plops, too hard plunges. The direction of your flick aims.</li>
+        <li><b>Swipe sideways outside the ring</b> to step left or right. You stay there until you step again.</li>
+        <li>Cows fly low over the water and shoot milk. Step out of the way before it lands.</li>
+        <li>Cows get tougher and faster each wave. Hit 100% lactose and it's over.</li>
+      </ul>
+      <div class="row">
+        <button id="startBtn" class="btn primary">Start</button>
+        <button id="practiceBtn" class="btn">Practice</button>
+        <button id="boardBtn" class="btn">High Scores</button>
+        <button id="labBtn" class="btn">Moo Lab</button>
+      </div>
+      <p class="note" style="margin-bottom:12px">Practice is the same beach with no cows, for working on your skips. Tap PAUSE in the corner during a game to pause or quit.</p>
+      <div class="row small">
+        <label><input type="checkbox" id="invertTilt" hidden> </label>
+        <label><input type="checkbox" id="muteBox"> Mute sound</label>
+      </div>
+      <p class="note">Best played holding your phone upright in portrait.</p>
+      <p class="note" style="margin-top:8px">Cow moo: "Single Cow Moo" by MichaeltheFox8621, <a href="https://creativecommons.org/licenses/by-sa/4.0/" style="color:#9fd3ff">CC BY-SA 4.0</a>, via Wikimedia Commons. Trimmed and downsampled.</p>
+    </div>
+  </div>
+
+  <div id="over" class="overlay" hidden>
+    <div class="card">
+      <p class="eyebrow">Lactose intolerance 100%</p>
+      <h2>GAME OVER</h2>
+      <div class="stats">
+        <div class="stat"><div class="v" id="finalScore">0</div><div class="k">Score</div></div>
+        <div class="stat"><div class="v" id="finalWave">1</div><div class="k">Wave</div></div>
+        <div class="stat"><div class="v" id="finalKills">0</div><div class="k">Cows</div></div>
+      </div>
+      <div id="entry">
+        <p class="lede">Enter your name for the leaderboard.</p>
+        <input type="text" id="nameInput" maxlength="12" autocomplete="off" placeholder="YOUR NAME">
+        <div class="row"><button id="saveBtn" class="btn primary">Save Score</button><button id="skipSaveBtn" class="btn">Skip</button></div>
+      </div>
+      <div id="overBoardWrap" hidden>
+        <h2 style="font-size:11px">TOP SKIPPERS</h2>
+        <ol class="board" id="overBoard"></ol>
+      </div>
+      <div class="row"><button id="againBtn" class="btn primary">Play Again</button><button id="homeBtn" class="btn">Title</button></div>
+    </div>
+  </div>
+
+  <div id="pause" class="overlay" hidden>
+    <div class="card">
+      <p class="eyebrow" id="pauseEyebrow">Take a breather</p>
+      <h2>PAUSED</h2>
+      <div class="stats">
+        <div class="stat"><div class="v" id="pauseScore">0</div><div class="k">Score</div></div>
+        <div class="stat"><div class="v" id="pauseWave">1</div><div class="k" id="pauseWaveLabel">Wave</div></div>
+        <div class="stat"><div class="v" id="pauseLi">0%</div><div class="k">Lactose</div></div>
+      </div>
+      <div class="row"><button id="resumeBtn" class="btn primary">Resume</button><button id="restartBtn" class="btn">Restart</button></div>
+      <div class="row"><button id="quitBtn" class="btn">Quit to Title</button></div>
+      <div class="row small"><label><input type="checkbox" id="muteBox2"> Mute sound</label></div>
+    </div>
+  </div>
+
+  <div id="lab" class="overlay" hidden>
+    <div class="card">
+      <p class="eyebrow">Prototype</p>
+      <h2>MOO LAB</h2>
+      <p class="lede" style="font-size:13px">Tap Play to hear each moo. Tap a row to make it the one the cows use.</p>
+      <ol class="lab" id="labList"></ol>
+      <h2 style="font-size:10px">CUSTOM KNOBS</h2>
+      <p class="note" style="margin-bottom:8px">These shape the Custom row above. Changes save automatically.</p>
+      <div class="knobs" id="knobs"></div>
+      <div class="row"><button id="labCustomBtn" class="btn primary">Play Custom</button><button id="labResetBtn" class="btn">Reset knobs</button></div>
+      <div class="row"><button id="labBackBtn" class="btn primary">Back</button></div>
+    </div>
+  </div>
+
+  <div id="board" class="overlay" hidden>
+    <div class="card">
+      <p class="eyebrow">Hall of Skips</p>
+      <h2>TOP SKIPPERS</h2>
+      <ol class="board" id="boardList"></ol>
+      <p class="empty" id="boardEmpty" hidden>No scores yet. Be the first to skip.</p>
+      <div class="row"><button id="backBtn" class="btn primary">Back</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+const rand=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const TAU=Math.PI*2;
+const PIX='"Press Start 2P", monospace';
+
+const CAM_H=1.7, SHORE_Z=2, POCKET_MAX=8, BEACH_MAX=14, IDEAL_V=2.0, MOO_PRESETS_COUNT=10, MOO_REAL=11;
+const YS=1.5, ROCK_G=12, LANE=1.4, USE_TILT=false, EYE_Y=(CAM_H-0.15)/YS, AIM_MAX=60;
+let W=0,H=0,DPR=1,HUD_H=64,horizonY=0,shoreY=0,beachTop=0,beachBot=0,pocketTop=0,F=1;
+let clouds=[],waves=[],speckles=[],trees=[];
+
+const S={
+  mode:'title',score:0,li:0,level:1,kills:0,time:0,camX:0,camTarget:0,
+  dodge:{dir:0,t:0},pocket:[],sel:0,beach:[],cows:[],blasts:[],rocks:[],fx:[],msgs:[],
+  shake:0,milkHit:0,spawnT:1,beachT:2,practice:false,bestChain:0,mooIdx:MOO_REAL,custom:null,
+  tilt:{ok:false,listening:false,roll:0,g0:null,invert:false},aim:0,aimRaw:0,lastThrowV:0
+};
+
+/* ---------- layout & projection ---------- */
+function layout(){
+  horizonY=Math.round(H*0.31); shoreY=Math.round(H*0.60);
+  beachTop=shoreY; beachBot=Math.round(H*0.855); pocketTop=beachBot;
+  F=(shoreY-horizonY)*SHORE_Z/CAM_H;
+}
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  W=canvas.clientWidth; H=canvas.clientHeight;
+  canvas.width=Math.round(W*DPR); canvas.height=Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  layout(); buildScenery();
+}
+function project(x,y,z){const s=F/Math.max(z,0.05);return {sx:W/2+(x-S.camX)*s,sy:horizonY+(CAM_H-y*YS)*s,s};}
+function heldRockPos(){return {x:W/2,y:shoreY-34};}
+function throwZoneR(){return Math.max(64,W*0.2);}
+
+function buildScenery(){
+  clouds=[];for(let i=0;i<5;i++)clouds.push({x:rand(-80,W+80),y:rand(HUD_H+24,horizonY*0.7),w:rand(40,90),v:rand(4,9)});
+  waves=[];for(let i=0;i<48;i++)waves.push({x:rand(-24,24),z:rand(2.6,42),len:rand(0.4,1.8),ph:rand(0,TAU)});
+  speckles=[];for(let i=0;i<140;i++)speckles.push({x:rand(0,W),y:rand(beachTop+8,beachBot-4),r:rand(0.6,1.6),d:Math.random()<0.5});
+  trees=[];
+  const layers=[{z:70,hmin:16,hmax:34,c:'#4c7a5a',sp:11},{z:42,hmin:9,hmax:24,c:'#2e5a3d',sp:8}];
+  for(const L of layers){for(let x=-140;x<W+140;x+=L.sp*rand(0.7,1.3))trees.push({x,h:rand(L.hmin,L.hmax),w:rand(5,9),z:L.z,c:L.c});}
+}
+
+/* ---------- storage ---------- */
+const LS_KEY='udderly.scores.v1', LS_NAME='udderly.name', LS_MOO='udderly.moo', LS_CUSTOM='udderly.moo.custom';
+function loadScores(){try{const v=JSON.parse(localStorage.getItem(LS_KEY)||'[]');return Array.isArray(v)?v:[];}catch(e){return [];}}
+function saveScores(list){try{localStorage.setItem(LS_KEY,JSON.stringify(list));}catch(e){}}
+
+/* ---------- audio ---------- */
+let AC=null, muted=false;
+function audioInit(){if(AC)return;try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}loadMooSample();}
+/* Cow recording: "Single Cow Moo" by MichaeltheFox8621, CC BY-SA 4.0, via Wikimedia Commons.
+   Trimmed, mixed to mono, resampled to 11025 Hz 8-bit PCM WAV for embedding. */
+const MOO_WAV_B64='UklGRlhlAABXQVZFZm10IBAAAAABAAEAESsAABErAAABAAgAZGF0YTRlAAB/f4CAf4CAgH9/gIB/gICAf4B/f4CAf39/f3+AgH+Af4B/f4B/f4CAgIB/f4B/gICAgIB/f4CAgH+AgICAgH9/gICAf39/gICAgH+AgH9/gH9/f4CAgIB/gIB/gIB/f4CAgICAf3+Af39/gICAf4CAgH9+fn6AgYB/f39/f4CAgH9+foCBgH9/gIB/f4CAgH9/f4CAgH+AgIB/f3+AgH9/f4CAf39/gIB/f4B/gH9/f4CAf39/gIB/f3+Af39/f4B/f3+AgH9/f3+Af39/f4CAgH+AgIB/f3+AgH9/f4CAgIB/gICAgICAgH9/gICAf4CAf3+AgICAf39/f4CAgICAgICAf35/gICAgICAf317fYKDgH6AgH9/gIGAgH9+gYODf36BgoB/f4GBgH9/gIGAf3+BgX9/gIGBgH9/gIGBgICAgYB/gICBf39/gYCAf39/gIB/f4B/f39/gIB/f3+AgH9/gH9/f39/gICAf39/gH9/f4CAf39/gICAf39/gH9/f39/f3+AgICAf39/gIB/f4B/f4CAgH+AgH9+f39/f4CAgH99e3yAg4B/f4B+foCBgIB/fn+Cgn9+gYJ/fn+BgYB/fn+AgH9/gYB/fn+BgH+Af3+AgICAgIB/f3+AgH9/f4CAgH9/f4CAf3+AgH9+f4CAgH9/gIB/f3+AgH9/f4CAgIB/f4B/gICAgH9/f4CAgH9/gICAgH+AgH9/f4CAgH+AgIB/f4CAgH9/f4CAgICAgH5+foCAgICAgH98en2Dg35+gIB+f4GBgH9+fYGEgn5+gYF/foGCgX5+f4CCgH5+gYF/f4CBgH9+f4GBgH9/gICAf3+AgH5+f4GAf3+AgH9/f4CAf39+gICAf3+AgH9+f4CAgH+AgIB/gH+AgH9/gICAf3+AgH9/f3+AgH9/gH9/f4B/gICAf3+AgIB/f3+AgIB/f4B/gICAgH9+fn+AgICAgH58e36Cgn5+gIB+f4GBgH99fYKEgX5+gYF/f4CBgH9+f4CBgH5/gIB/f4CBgH9/f4CBgIB/gIB/f4CAgH9/gICAf3+AgH9/f3+Af39/gIB/f4CAf39/gIB/f39/f4CAf4CAf39/gICAf39/f4CAf39/gIB/f4CAgICAgICAgICAgH+Af39/gIB/gICAgYB+fn+AgICAgH9+fHt+g4N/fYB/fn+BgICAfn2AhIJ+fYGCgH6AgYB/fn+BgYB/f4GAfn6AgoF/fX+BgYCAgICAf4CAgYB/foCAgH+AgICAgICAgH9+f4CAf39/gH9/f3+AgIB/f4CAgICAf39/f4CAgH9/f3+AgIB/gIB/f4B/gIB/f4CAgICAgYB/f4B/f3+Af39/f4CAgH9+foCAgICAgH58e32Cg39+f4B/f4CAf4B/foCDgn59gYKAfn+BgIB+foCCgH5/gIF/fn+BgH9+foGCgH9/gIB/f4GBgH9+f4GBgH9/gIB/f3+AgH9+f4CAf35/gIB/f4CAf39/f4CAgH9/gIB/gICAf39/f4CAf3+AgH9/f4CAf39/gICAgIB/gH+AgIB/f3+AgH9/gIB/f35/gICAgIB/e3p9g4N/foCAfn6BgYB/fX2BhYJ9fYGBf36AgoF/fX6AgYB+f4GBf36AgYF+fn+AgYB/f4CAgH+AgIB/fn+AgH9/f4CAgH9/gIB/fn+AgH9/gICAf39/gIB/f4CAgICAgIB/f3+AgIB/f4CAgX9/gIB/f3+AgIB/f4CAgH9/gIB/f3+AgIB/gICAf39/f3+AgICAfnt6foODfn6Af35/gYCAf35+goSBfX2Cgn9+gIGAfn5/gIF/fn+AgH5+gIKAfn5/gIGAf3+AgH9/gIF/f36AgIF/fn+AgH9/gICAfn+AgIB/f39/gH+AgIB/f39/gIB/gICAf39/gIB/f3+AgIB/f3+AgICAgICAf4CAgIB/gICAgH9/gIB/f4CAgH59fn+AgICAgH56eX+Eg359gIB/gIGBgH99foKFgX1+goJ+foCCgH9+f4GCgH5/gYB/f4CBgH5+gIGBf39/gIF/f4CBgH5+gICAf39/gIB/f4CAf35+f4B/f39/f39/f3+Af39/gH9/gICAgIB/f4CAgH9/gIB/f4CAgH9/f3+Af3+AgIB/f3+AgH9/f4CAgICAgH99fn+AgH+AgH97en2Cg39+f39+f4GBgH9+fYGEgn5+gYKAf4CBgX9+f4GCgH6AgYB+f4CBgH9+foCBgIB/f39/f4CAgH9/gIGAf4B/gIB/f4B/f35+f4CAf3+AgIB/f4CAgICAgICAgICAgH9/gICAgH9/f4CAf4CAf39/f4CAf3+AgYCAgICAgICAgICAf4CAgIB/fn5/f3+AgIB/fHp7gIOBfn6Af36AgYGAfn1/g4R/fYCCgX5+gYKAfn1/gYF+foCBgH5+gIGAfn5/gYGAf4CBgH9/gICAf3+AgYB/f4CAgH9/gIB+fn9/gH9/f4CAf39/gICAf3+AgICAgICAf3+AgICAf3+AgICAgICAf3+AgICAgICAgH9/f4CAf39/gICAf31+gIB/f4CAf3x6fIKDgH1/gH9+gICAf359gISDfX2AgoB+f4GBf35+gIGAfn+AgX9+f4CBf35+gIGAf3+AgIB/f4CAf39+gIF/f3+AgH9/f4B/fn6AgIB/f3+Af39/gIB/f3+AgICAgICAgICAgYGAf3+AgYCAf4CAgH+AgICAf4B/gIB/gICBgH9/gYGAfn5/gICAgIF/fXp7gYSBfn6Bf35/gIGAf31+g4N/fYCDgH5/goF/fX6AgYB/foCBf35/gYF/fX6AgIB/gICBgH9+gIGAfn+AgIB/f4CAf39/gIB/f3+AgIB/f4CAf39/gYB/fn+AgH9/gIGAf35/gIB/gICAgICAgICAf4CAgYCAf3+AgICAgIB/gH+AgIB+fX6AgICAgIB+e3l9g4N/foB/fn+BgIB/fX2BhYJ9fYKCf36AgoF/fn6AgoB+f4GBf35/gYF/fn+AgYB/f4CBgH9/gIGAfn+AgH9/gIGAf35/gIB+fn+AgH9/gIB/f39/gIB/f3+Af4CAgYB/f39/gICAf3+AgIB/gH+Af3+AgICAf4CAgICAgH9/gICAgICAgH9+f4CAf3+AgH97eX6Dg399f39+f4GBgH99fYKFgX1+g4J/fYCCgH5+f4CBgH5/gYF/fn+BgH9/f4CAgH9/gYCAf4CBgH9+gIGBgH5/gICAf3+Af35/gIF/fn6AgIB/f3+AgH9/gICAgICAgIB/f4CAgIB/gH+AgH9/gH9/f4CAgICAgH9/gICAgH9/f4CAgICAgH9+f4CAgICAgHx6fIGDgH5/gH9/gIGAf358gISDfn2AgoB+f4KBf35+gIGBf39/gIB/f4GBf35/gIGAf3+AgH9/f4CBf35/gIGAf3+AgH9/f4CAf35/gH9/f3+Af39/f4CAf39/gICAgICAgIB/gICAf39/f4B/f39/gH9/f4CAgICAgH+AgICAgICAgYCAgIGAfn5/gICAgIB/fXp6gIOBfX6Af35/gICAf31/g4R/fH+Dgn5+gYGAfn6AgYF/fX+BgX99f4GBf35/gYF/f4CBgX9/gIGAfn5/gIF/f3+AgH9/gIB/fn5/gIB/f39/f3+AgIB/f39/gICAf4CAgH9/f4CAf3+AgICAgICAf4CAf4B/f4CAgH+Af4CAgIB/fn5/gH9/gIGAfHl7gYSBfn+Afn5/gYGAfnx/hIN+fICDgX5+gYF/fn6AgoB/f3+BgH9+gIKBfn6AgYB+f4GAgH5+gIGAf36AgYB/foCAgH9/gIB/fn+AgH9/f4CAgH9/gICAf3+AgICAgICBgH9/gIB/f3+AgIB/gICAgH9/f4B/f4CAgH9/f4CAgYB/fn5/gICAgIB/fXt7f4OBfn6Af31/gYGAfn1/g4SAfX+CgX5/gYKAfn2AgYF/foCBgX5/gIGAfn6AgYB/f3+AgIB/f4CAfn6AgYB/foCAf39/f4CAfn5/gIB/fn9/gH9/gIB/f3+AgICAgICAgIB/gIGAf3+AgIB/f3+AgH9/gICAgICAgIB/gICAgH+AgICAf35/f4B/gYGAfnp5fYOEgH1/f35/gIGBf3x9gYWCfX2Ag4B+f4KBfn5/gYF/fX6BgoB+gICBf35/gYKAf3+AgYB/f4CBf35/gYF/fn+Af39+f39/fn5/gIB/f3+AgH9/f4B/f39/gICAf4CAf3+AgICAf39/gIB/f39/f4CAgICAgH+AgICAgIB/f3+AgIB/fX1/gICAgICAfXl6gISBfX6Af3+AgYCAfn1+g4SAfX+Cgn9/gYKAfn5/gYF/fn+BgX9+f4GAf31/gIGAfn+AgH9+f4CAfn6AgYF/fn+AgIB/gIB/f39/gICAf4CAgH+AgICAgH+AgICBgICAgH+AgICAf3+AgIB/fn+AgH9/gIB/f39/gICAgICAgICAgH9+foCAf4CBgYB9enuAhYF9foB/f4CBgYB+fH6EhX98f4KBfn6BgoB9fX+BgX59gIF/fn6AgoB9fYCCgH9/gIB/f3+AgYB+fYCBgH9/gICAf3+AgIB+fn+BgH9+f4CAf39/f4B/f3+AgICAgIB/f39/f4CAf39/gIB/gIB/gICAf3+AgIB/gICAgICAgIB/fn+AgH9/gICAfXp7gYSAfX+Bf36AgICAf31/g4R/fYCDgX1+gYGAfn6AgYF/foCBgH5+gYGAfn2AgoF/f4CBgH9/gIGAfn6AgYB/f4CAf39/f4B/fn6AgH9+f4CAf35/f4CAf39/gICAgICAgH9/gICAf4CAf4CAf3+AgIB/gICAgICAgICAgICAf4CBgH9+f4CAgICAgH16eYCEgn1+gIB9f4CAgH58fYKFgHx+g4J+foGDgH5+f4GCf35/gYF+foCCgX59f4GBf3+AgIB/f3+AgH9+f4CAf35/gIB/fn+AgH9+f4CAf39/gIB/f3+AgH9/f4GAf3+AgIGAf3+AgH9/f4CAgH9/gIGAf39/gICAgICAgH9/gICAf39/f3+AgICBgYB9eXuChIF+f4B+foCBgYB+fH6DhH98gIKBfX6Bgn99fYCBgH5+f4GAf36AgYB9foCBgH9/gICAf3+AgYB+f4CBgH9/gIB/f39/gIB/fn+AgH9+gICAfn5/gIB/fn+AgYB/f4CAf3+AgIF/f4CBgH+AgYGAgICAgYB/f4CBgICAgICAgH+AgH5+f3+AgYB/fnt5fIKDf31+f35+gYCAf3x8gISEfnx/goB+f4GBf31+gIKBf31/gYF/f4CCgH5+gIKBf3+AgYF/fn+BgH5+f4GAf3+AgIB/f4CAgH9/gICAgH+AgICAgICAgICAgIGBgICBgYGAgICAgH+AgYCAgICAgICAf4CAgICAf39/f3+Af39+fn5+f4CAgH9+enh8g4N+fH9/fX6BgIB/fHyBhYN9fIGDf3x/g4J+fX6AgoB+f4GBf31/gYF+fX6AgYB/f3+Af35/gIB/fX6AgH9+gICAgH9/gYGAf3+AgYB/gIGBf3+AgYGAf3+AgYGAf4CBgIB/gIB/f3+AgH9/foCAgH9/f39/f4CAgH9/gICBgH5+f4CAgIGCgH57en6Eg35+f4B/f4CBgH98fIGFgn19gYJ/fH+CgX18foCBgH5+gIF/fn+BgH99f4CBgH9/gICAf3+AgX9/f4GBgIB/gICAgH+AgH9/f4CAf35/gH9/f39/f39/fn9/gIB/f4CAf39/gIB/f4CBgYCAgIGBgICBgYCAgIGCgICAgYKAfn6AgH+AgYF/e3l8goSAfH+Bfn2AgYF/fXt/hIN+fICEgHx+g4N/fH6Bg4F/foGCgX5/goOAfX+CgoB/f4CAgH9/gIF/fX6AgX9+foCAf35+f39+fX5/f39/fn9/f35/gIB/f39/gYGAgICAgYCAgYGBgYCAgYGAgICBgH+AgIB/f4CAf39/gYF/fX5/f39/gIB/fHh6gISAfH+Bf31/gYGAfnx/hYZ/fH+Fg359goSBfn6Ag4N/foCCgX59gIKBfXx/gYF/f39/f39+f4CAfn5/gIB/fn+AgH9/gIB/fn+AgYF/foCBgYB/gIGAf4CAgYCAgIGAgH+AgICAf3+AgIB/f3+AgH9/f4B/f3+Af4CAgH9/fn5/gIGBgYB+e3l9hYV/fYCBf3+BgoGAfXyBhoN+fIKEgHx/goJ/fX6AgX9+foGBf3x+gYJ/fX6AgYB+f4CBgH5/gYGAfn6BgoB+f4GCgH5/gIF/fn+AgH9/f4GAfn1/gIB/fn5/gIB/f3+Af35/gH9/f39/f3+AgICAgH9/gICAgICAgIGBgYGBgH5+gIGAgICAf3t4fIOEf3x/gH19gICAf3x7f4WEfXuBhIB7foOCf31+gIKBf32Ag4F+fYGDgX5+gYKBgH+BgoF/foGCgX9+gYGBfn6AgH9+foCAf319f4B/fn5/f35+f4CAf35/f4CAgH+AgYB/gIGAgICBgYGAgICBgIB/gIGAgICAgH+AgIB+fX5/gH9/f4B9eXd+hYN9fH+Afn5/gYF+enyDh4J7fYKEfnyBhYJ9e3+Eg4B9foKDgH5/g4J+fX+CgX9/f4CAf35/gIF/fH2Bgn59foCBf35/gIB+fX+BgX5+f4GAfn6AgYF/f4CAgICAgICAgH9/gIB/f4CAgICAf4CAgH9/gICAf39/gYB/fn5+f39/f4CAfnp4e4OFf3x+gX9+f4GCgHx7gIeFfXuBhYF8foODf3x9goOBfX6BgoB9foKDf3x+gYKAf3+AgYB/f3+BgH19gIKAfn5/gIB/f3+Af35+gIB/fn+AgH9/f4CAgH9/f4CBgICAgICAf4CBgH9/gICBgH+AgYF/fn+AgYB/gIGAf35+f4B/fn+AgX95dnyEhX97foB/fX6Ag4F8eoCHhX17gYWBfH6Cg4B9foCCgX5+gYKAfn6Bg4B9foCBgX9/f4CAf35/gYF+fH+BgH5+gIGAfn1/gH9+fX+Af35/gYF/fn+BgYB/f4CBgYCAgICAgICBgYB/gIB/gICAf4B/gH9/f39/f39/gIB/fn5/f39/gIGAfHh6gYWBfX6Af31/gIKBfnt+hYV/fICFg319goWBfX2Bg4F/fYCCgX59gIKAfH2AgYB+fn+AgH9+foCAf31/gYF/foCBgH9/gICAf35/gYF/f4GBgH9/gICAf3+AgICAgICAgH9/gICAfn9/f39/f39/f39/f4CAgH9/gICAgH9/fn+AgICBgX55eX+Gg359gIB/f4GCgX97fIOGgXt+g4R+fICEgX18foKCfnx+goF9fH+CgX18f4GBf3+AgYB/f3+BgYB+f4GCgH9/gYGAf3+BgH9+f4CAgH5/gIB/f39/f39+f3+AgH9/f4CAf39/gH9/f3+AgICAgICAgICAgIGBgICAgoF/fn+AgICBgYF+enh9hoR+fH+Afn6AgYF/enuCh4F6e4KEf3t/g4J9e36Cg4B8foKCf3x/g4N/fH+CgoB/gIGBgH9/gYKAfX6BgoB9f4GBf35+gIB/fn5/f39+foCAfn5+gIB/f3+Af4CAf4CBgH9/gIGAf3+AgYGAgIGBgH9/gIGBgH+AgYF/fn+AgH5/gYGAe3h4gIWCfX2Af3x+gYKAfXp9hIaAe36EhH58gYSCfXyAg4N/fX+Dg359gIOCfn1/goF/foCBgX9+f4CBf31+gYF/fX6AgYB+fn+Af31+f4B/fn+AgH9/gIGAf35/gIGAgICBgICAgIGBgICAgYB/f3+AgICAf3+AgH+AgICAfn1/gYB+f4GCfnl3foWDfX2AgH5+gIKCf3p9hYeBen2EhH97f4SDfnx/g4J/fX+CgX59gIOCfnx+gYF/fn+BgH9+f4GBf31+gYF/f3+BgH9+foCAf35+gIGAfn+BgX9+gIGAf39/gICAgH+AgH9/gIGAf35/gICAgH+AgICAgICAgH+AgICBf31+gIF/f4CCgHx4eYGGgnx9gIB+f4CBgX57fYSFgHt+hIN9e4GEgX19gIKCfn1/g4J+fICEgn18f4KBf3+AgIB/fn+Bgn99foGCgH5/gIB/f3+Af35+f4GBf35/gIGAfn+AgX9+f4B/gICAgYB/f3+AgX9/gICBgH9/gIGAf4CBgH9/gYGAfX1/gYB/f4CCgHp2e4WFfnx/gX59f4GBgHx7gIWDfXyChYB7foSEfnt+goJ/fn+BgoB9foKDf3t/gYGAgIGAf3+AgIGAf35+gIGAf3+AgH9/f4CAf39/foCAf36BgX9+f4GAf3+Af3+AgYCAgICAgICAf4CAgYCAgICAgICAf3+BgYB/gIF/fn6AgX9+f4CBgHp3e4SEf3yAgH19gIKCgHx7gIaFfnuAhYF8foODf31/gYKBf36AgoF+foCCgX5+gIGAf3+AgH9/f4CBgH5+f4GAf36AgIB/f4CAf35+f4CAfn+AgH5/gICAfn+AgICAgICAf39/gIGAgH5/gYB/f4CAgICAf3+AgICAgH9+foCBgYCAgH99eXmAhYJ8fYGAfn+BgYB+fH6EhYB8f4SDfXyBhIF8fYCCgX9+gIKAfn2AgoF+fX+BgYB/gICAgH5+gIF/fX6BgX9+f4CAgH9/gIB/fn+AgH9+f4CAf3+AgH9/f3+AgICAgICAf3+AgIB/gICAgICAgICAgICAgIB/gICAfn5/gICAgIGAfnt4e4OGgHt+gH5+gIGBf316gIaFfXqAhoJ8foOEfnt+goOBfX2Bg4B9foKDf3x+gYJ/foCBgYB/fn+BgH59f4GBfn6AgYB+foCBgH5+gIGAfn6BgX9/gIGAf39/gICAgIB/f4CAgICAf39/f39/gIB/f4CBgICAgH9/f39/gIGAgH+Bf3p3fYWFfXp+gX9+f4KCf3x8gYWCfHyChYF8foOCfXx/g4J+fX+Cgn59f4ODfnt9g4N/fX+BgH9/f3+AgH5+f4B/fn+AgH9/f39/f39/gIB/f36AgYB/f4GAf31/gIGAgICAgH9/gIKBf3+AgYB/gIGAf4CBgYB/gIB+fH+BgX+AgYB8d3iAhoF8foGAf3+AgH99e3+Ghn97f4SDfHyBg4B9f4SEgH1/gYF9e36DhYB8foGBfX2Agn99f4GAgIB/fH6Bgn59gYN/fH+DgX17f4KBfn+Cgn98foGBfn1/goF/foCBf35/gIB/gYGAfoCCgH5+gIKCgICCg355eoGDgYGDgn95cW9/j4p+f4d/cnN/hIGAgYSJhnlweIeGfH2Ji350fIeFe3qCh4J8fICDgn98foF/e3uBhYF9foGBfXt8f4CBgoODgHx6fICBgYCBg4J/fX+Af35+gYOCf3x/gX98f4KAfX6BgoB/gICAf35/gYOBgIKEgn5+fn17foSGhIKBgHlvbHqQkoJ6g4R0bXqHhn58g4uIe3J5hIN7fImOg3R4hol9d3+JhXx7gISCfn1/goB6eICGhH+Ag395eX+CgYGCgoCAf3x8foCBgIGCgX5+f39/f4B/foCBgICBgH19f4B+foCCgoGAgYB+fH6BgoGBgoODgn96eXqAhoiGg4B5b2l2jJOFfYSEdGt4hoeAfoGGhn51eIOFfnuFjYV1doWKfniCiYF4eoGEgoKBf359enqAhoN/gIOBe3p9f3+BhISCf318e32BgoCBg4J9en6BgX5+gIGAfn5/goJ/fX+BgH19gYOBgIGCf35+fn+EhYSCg4B5dXqChoSDhIR+cGhyiJKIfIGGe25zgYWAfoGIi4J0cX2Hg32CjIh5c3+KhHl7hYd/en2Bg4KAgIGAe3d7g4SCgYOCfHd5f4GBgYOEgX16e32AgYGAgoF/fH6BgH5/gICAfn2Ag4J+fX+Bf3x+hISAfoGDgXx8gISDgYKFg3x2eYCEhISEhX5xZ3GKlId7gYZ5bXWChIF/goiKgHJyf4iCfoSLhXd1g4uBd32IhXx6f4OCgYGBgHx3eICHhoF/gYB7d3yCgn+AhIN/fXx7fICCgYGCgXx6fYKCf3+Af35+f4CCgX9/gIB+fYCCgoGCgoF9e36Cg4ODhIB7d3l/hIWGhoJ2amh6kZWFfYJ+cW56hoaBfoOKh3pxd4KFgIGKjH9yeImLfXeBiIN7e4CDhYN/fX59eXmAiYiCfX58eHl+gYKEhoJ8e3x6e4CFhIB+f4B8e3+Dgn9/gX99fH+DhIKAf4B+fHyBhoeEgH5/fnx9hImIgHp5fH5/goeHg3ptZXOOmIh8gYF1bneDhoKBg4iJfnF0gIeCf4eMgnN1iI5/dX6KhXl4f4WFgoCAgHtzdYKMiYB9f355dnyDg4GBgoJ/fXt6fYKCf4CCgXx7f4OBfn6AgH9+f4KEgn5+gIB9fYGFhoJ9fYCBf3+BhYN+enyBgoB+hIh/bWJxjpmIeX+FeGxzgoaBfYGMkIJubX2GgoCJkIVzcoSOg3Z9iIZ7eICEg4GBgYF+eHR7h4uGgH58enl8gYKAgYKBf358e3yAgoB+gIOAfH2Cgn58foGBgICCg4F9fX+CgH6AhIWCgICAfn6BhYR9d3uCg4GBhIJ5a2d5lJmEd3+CdGx4hoaAf4OKi39wcoGIgX+Gi4N3d4aNgnZ6g4N+fYKFhoN8d3p+fHp/ioyDenp9e3h7goaFgoF/fXx7e36Dg399gIJ+fICFg3t4e4CDg4SFgn17fYCAfoCDhYSCgYB/foCBgH19gIKDg4KAenFocImZjn19gnhsdISIgn6Ah4yFd3R+hH98hI2IenaBjYh6doCDfnyChoSCgHt5e3x7f4eJgn19f315eX+DgoGAgH+Af3x7gIJ+fH+CgH2BhIJ9e31/foCFh4N/fX1+gIKCgoKDgoGChIF8eXp/hISBgISDeGlmd5GYhnh+hHlud4WGf32CiIqAdXaChoB9g4V/en6KjoN2d4B/e32FiYiCe3h6fnx6fYWKhn56fH15eX+FhYF+fX9/fX2Agn98fH+CgoB/f4F+enuAhISDgoGBfnx8foGChYeFgX+Af3p3eoOIh4OBgHxwZWyHmpB8eoF8cXJ/hoSAf4SJhnp1fYWEfn2Ehn96gYyJfHh+gHx7gomIg356eHp9fn6DioqBdnZ9gH1+gYOBf35/gYF+fH6BgH19gIKBgICCgX16fYKEgoGDg397fICCgoKDhISDf3l2e4KGhYODgntsYWuLoZZ8dHl4cXWDiod/fICGg3t5gYeEfX6Cg3x6hZKMeXF4gICBg4WFg4B6dnl+fX6Di4p/d3d8fn6AhIWCfXt7f4ODgH5/f3x6fIKGhYKAfXl3e4SJhoKAgH58fYGFhYSEg4F/fHd4gImJhYJ/eGphbpCklXxzd3RwdoSMioN+foKBe3h/iIeBf4KAeXmGkYt8dXd8foGEhoeFfnVyeoB/fYWQjHtxdHyBgoOEhIF7eHyBhYOAfX18fH2AgoKBg4SBenZ7hYiFgX9/f35/goWHhYF+fXx8f3+Aho2KfWldZ4eemIV9fnVqbX2Lj4mAfYGDfnl7gIaIhX13eH+Ijop/dnR3eX6FiYeEgnpxcXmAgoSJi4N4cXR8goWFg356d3l/h4iDfXt4dnd/hoeGhYN7c3R7g4iJhoB9fX5/gYSHh4N6dHiBiIiFhYR4ZFxxl6WTfXl6c2xzgYuMh4KDh4N3cnyJjYeBfnt6gIuOhn14dXR7houHgoOBeHF1foKChoyKfnRzeYKHhYB/gH57fYOHhH98enp6foSHh4OAfXp5en6Dh4aCgH59foGFhYB3dXyFiYeGhH1vYGOAnp+Je3x7cm92goqKhYKFh4J5dnyGiYWBfXp8hIuKgnt5dnZ8hIiIhoF5cnR8gIGChYeEfnt6e3+BgYCAgIB/gIKEgn56e32AgICChYaEfnl3eoCFhIKCgn98foKBfHl8goSDgoB7cGRphZuWgnh5eHV4f4ODgoGChYaDfnp9goSCgIB+fYOKiH95d3h7f4ODgoKAeXZ5f4F9fYKGhH98e31/gYKBgIB+f4OHhX98fX9/gIKEg4GBgoB9fH+DhYOAgIKBgX95dXmCiIiHhHxyZWF2mKeTeG90eHd7g4mIg359g4mGfHV8iY2Fe3Z4gYyQh3p1dHZ5gYqLhn54c3V7f39+goaEf3x7enp/hYaDfHl6gYeIhYF+e3l7gYaFhIOAfX1/f31+g4mIg3t0cXeCjIyGf3x3bGFoh6SihnNxdHN1fomPi4J6eYKHhX9+hIeCe3h9hIuNh310cXR6gomMiH93c3N3foOFg4GBfnt7foCBgoJ/fHx+gIOIi4Z9d3d6foOIi4iCe3d5fICFhoWCf3x3c3mEjIuDfXZtYmWCpKiNc21vcXWAio+Oh355fIOFgH+EiYV+eHmAio+Ifnd1dHV+iY6Ifnh2dHN4gIWHh4V/eHd6fIGGhoB6eoCHiYWBfnx8f4CAgoOEhYOBfXt5e4GHiYR6cnN7hIuLhXptX113nq+cfm1qanB7iJGTjoN7eX6Af4CGjIqCeXZ8ho2JgXx4c3N6ho2Lg3x3c3Bze4OJi4iCenV3e3+ChIWDgH+AhIWDf31+gYGAgIOFhoJ9enp+goODf3p4en+BhIaDeWtfZoOjpYx1b3N1eHyCiI2LhYCChIB4eYSMi4F6eX6HjYh9dXN1eH+GioeBenVycnd/hYaGhH97e3t6fIKHhoF+f4KEhIKCg4F/fX2BhoqGfXh6foKDgXt2eYGFg399eXBmZnyaopF7c3V1dnyEiYmHhYODg4N/foKHhYF+foGGiIR9eHZ1d32Giod/d3N0dXp+g4OEg397eX2AgYKEhIF/fYGFh4WCgICCgoB/goWEgH9/fn17eXl9hYmGfXNtamx4jp6Yg3JtcnyDh4WDgoKDhIWGhYKAgYODgoGAgoaHg3t2dXd9hYqHf3hzcnZ8goSCfnx8fn+BgYB/gYKBfnx9goaJiIWAfHt8gYaIhYB8eXp7fX6BhISAeHFubnB8kJyRem1veH+DhoiHgn5/g4iKiIF/g4aEgH6BhomHfnh2d3h9hYqHfnZxc3h+gIKCf318fX6AgoWFgn57e32Bh42MhX16e36ChoeGgnx5d3Z5gomJhHxwZ2dwf5Oek3xubnN6gYeLi4aBf4CBhYeFg4SEgXx8goiLiIF4cXB0fYeMioN5cW5yeYGGhoJ/fXt7gIWEfnt8f4OFhYWFg4F/f4CBg4SCgH98d3Z9homGfXFqa252ipyahnJqbXR/homJiIaCf32BhYWEhYeFgHx8gYiNin90cHJ3gYuOiH50b3B0e4OGhYJ/enp9gYF/gIGBgICBg4eLiIF7en6BgoODfnp7gYSGgnhtZ2l1iZqZh3ZwcXR4foWHh4WFhYWEg4B8f4WHhYGAgoeJhn52c3V8g4mJg3t2c3R4fICCgX5/gYF+fHt9gIODgH+ChoiHhYSCfXl6foKCgoSHhX50bGttdIaanIp2bG1zeoCFh4aDgYKDhYeFgX5/gH+BhYmLiYN5dHR4e4GHi4Z/eHR0d3p+gYF/foCBgH9+fn1+fX2BhYeHiIiFfnh2eX6BhYqMh3xwa2psd5CimoJxbXF3fYKFhoSBgIGDhomGgH19f39/goeMjIR6c3R3fYOJi4Z+d3R1eHx/gYGAf359fX+BgH57en6ChYeJiYV+eXh4eH6GjY2Fe3Nuamp7lqOVfW9scnuBhIWFg4B+foKIi4aAf399e36Dh4qJg3t2dHV8ho2Lg3t1dXd6foGCgX58fX+Cg4F9e31+gIOFiYqFfXd2eX6EiYuHe3BtbW15kaKYf25sb3Z/iIyJg358e36FiYiHhoF7eXyBhouKgnl0dXl+hYmIhX94c3J2foWHhH56eXyBhIOAfX1+gISHiIOAfHd2fIaNjYV4bGpvdoGSmpB9cnByeYGFhoWFhIJ/foKFhISDg4F+fn+Dh4eDe3Z2eH2EiYuGfXRxdHuChoWAfHt+gIGAf3+AgICChISAe3p8foCGiYd/cmtscnyMm5iEdHBydnuChoeGhYSCf3+Dg4KEhYN/fHx+g4qJgXl1dXmAhoiIg3t1dnl8foKCfn1+gICBgoF/gIKEgn55eHmBiYyKhHxxaGhue5GkoIVtZ254f4OGiYmEgX9+gIWGhIGBgX98fYGHi4d+dXFzeH+IjouEe3RzdXl+goWDgIB/f4KEgX5/g4N/e3d4f4mPjIR7b2VjanmSqamMbGBmcn+Hi4mFgoKCgoGChISBgIGAf3+CiIyJfnNtb3Z+ipORh3lxb3J5f4SGg4B+f4KEg4B+gIJ/enh6foSKjYqBcmZhYm6Nr7GSb2JmbnmDiYuLh4N/f4OIiIWCgIB/fHt/iZCQhXVranF7h5GUjoFzbWxxfIWKiIF8e4CIi4V+enl3dXiBio6NiH1wZWBfa4uts5p7aWJlcHyIkJCKg4B/g4qLhX59fn17fYKIjo+HeG1oaXGBkpuWhXNoaXJ8hIaEg4SEgoOGg315eHZ2fYaMjouAc2ljYW6KpKWSf3RvbnF4gIeKjIuHg4KDhYWGh4N7dXZ9iJCRiXxwamtzgI2TkIV3bm52f4GBgIKFhoaIhoF5dHF1foeNjoh8b2lmaHaRopiFeXd0dHd8gIWLi4WAgoeJhoWHhoJ7dnh/ipGNgXRwcXN5ho+OhntzcXV7foCBgYOEhIWEgX58d3V4goyMg3Vta2ltgp2ij3lvcHV7f4CAgoWHhYODh4iFhoqKgnl2eYGLkIl8c3Jzd3+JjouDeXFxdn6DhIF+foGEhYWDfHN0e4OHh4R7cWZgaYqqqItwaG12gIWFhIOAfoGGi4uHgH6GjouCe3p+hYiCend5d3Z8iI+NgXRucXuEhYF9foKEgoGBgHp1eoSLh31zb29rbYKfo410am52f4WGhIKAf4GDh4qHgX6EjZCIfXd7hIiDfHl4d3d9h42KgXZxc3qBg4KBgYGBf3+Cgn12eIOKhHlwbWpqeZaom35saXB4gomKhYGAgYGChIeIhYOGi4qCenqDjIt/dnR1dnmCi46HfXRxdHqBhISCgHx7fYKEgHp7g4qFeG5tbWpwiaaojXFlZ3B8h46NhoF/fnx9hIuMiIeKiYF5eICKjYZ8dnRzdn6IjouCeXR0eX6CgoGAgH9/gIB8eX2EiYR6cGxqZm+Oq6qLbmRocHqFjI2Ig4KBfHuBiomEhoyMhHx8gYaHg3t2c3R5gYmNi4R3b3B5goaGhIF8eHl+gICBhYaAeXJuamdpfqGznnliYGh1g46QioaFgnp0fImMh4WKioR+foCEiIh/dHN3eXuDjpKJeW1tdn6Eh4iDfXp5eXt/hImKg3ZqaG1pZ32nu6J2XVpmdoSLj5GOhHdxdoaSj4eHiIR8fICGjZCHeG9vc3V7iZeai3VoaXN/iIqHg4F7dHJ7iI+Lf3VxcnBmXW6bwLeKYVJabICMkZWVjHxua3yPlIyFhoaAen2Eio2Kf3VwcHF3hpickX1sZmx6h42LiIJ3bm54h5CPhnpuZmdlYXOev7SJY1ZaZ3iJlZqYjX5vbXiKkIyJiod/e32Bho2NhHVtbG94iJmdkHxuaW53gomLiYN6cW53h5GOg3ZtZ2NdYYKyxKh7XldbaHmJlp2ckX5taneHjpCRj4Z6dnqEjo+IfnVvam58kJ6ejndnaHB6g4qMh31zb3WEkZCFcmVhY2FlhLLEqX1gVVhldoWUoKKXhXNrcHyGjpOSin55fISLjIR6c3FwcnuLmp2PeGpsdn2BhoeCe3V0fImSjoBtYF5hYnCWvb6aclpUWmp7jJmhnY17cXR8gIKHjpCIfn2AhouLgXVvb3F2gpSgmYJsaXN7f4SIhntzcnmIlpaHbVpYYGRvj7jBoHZdVlxpeYaRm56VhHZ0e4CAgIiQjYF7f4mQj4N0a2psdIGRnp6NeG1ucnZ/h4iBd3J4h5WXiXBbVlpca5K8w6F4YFlbZXJ+ipignI9+dXZ6fIGLkYyBe36FkJWLdmdkaHF/k6GgkH1xbGxyfoiHf3l4fIeSlIVuXFVVWG6bw8Gcd2JaWmNvfYycpaGQfHN2enyAiY2JgoCDiZKThW9jZm10gZWin457b2xudX+Ggnt2eIGOmJSBZVJPVmB+q8W0jG9kYGJnbnuNnqWejn11d3l5foqPioOChYqNiH1xbW1tdYSWnpqMfXRvbXF7goF7eXyHlpuMbVNNUlhunMTCm3RiYWZsb3N/kJ+il4Z7e318e4GIioaBgIaRlIZyamxucXuNmpyShXt2cm9yeXx7e4CKlZmLb1dQU1Zrm8G7lXVpZ2dqbnN+kJ6glYiBgH55eoOMioF7fYWSmI15bWtmZXOLn6KYin93bmltd3x5eoORmZeIbldOUFdxoMG3kXRraWlqbHF9jpufmY6Ef3t5eoKIhYCAhIuUlYp3aWJgaH6Wop2RiIB2b2ttcnR3f4yZnZV/Yk5HSl2Lvcqnemhrbm1rbXWElp6ZjoiHhn95fYWGfnd5hpagmIJsXlxidI+iopSIgntzbW1wcXJ3hpqnn4ViSEFKXYO0yq9/ZWZwcm9udIGOmZmQhoWKiYN/gYJ6dHmHmKGbhm9iXGFwip+jmYyCenRwbGxucHWGnKeegmFKQ0tdhbbKrHlfZXF3d3Z4fYaQlI+KjJCOhX5+fXh0eYiZo5uDa19fZXSJnKOcjn91c3FvbGtrc4qkrZ16WUVBSGOYyMmZZ1tqeHt3dnqCio6OjIqNkY2Df4F/dnF6ipuimYBoXmBndougppyKe3RzcG1ub3F5jKGnmHhXQj1JbqjQwYphXGt1eHh4fISKjImJjZGRiX98fnx2dH6OnqKVe2RdX2h7lainloFzcXNxbWprcYOaqKONaUg5P1qOxdGmblllc3h5e35/g4mNjY2PkImAfoODeXFzgJKio45xXlpfb4ukqZqIfHd0cW9taWl2kKmwnHRLNDZPgr/auXxXWmx3eXp9f4SLkI6Iio+OhYKFhnxxb3qNoKSWfGVaWWiEoKmgjn93dXNwa2hpdImhraKAVTgyQnG03ciKXFhodHh7foCCh42Mh4ePkouDg4N7cG97jp+jln5oWlhmgp2ooJCBeHZ1cGllZ3KHnaqjhV1ANj5ioNTSm2VVYnJ7fX1/hIqPjIWFjZOOhoaGgHRvdoaZopmCaltaZX6aqaORgHh1dHJtZWNviKCrooZfQDM5XqLb15thT15zfYGCgoOHi42Iho2SjYeHiIJ2bnODmKSdhmpXVGF+nKylkH10c3V1cGZjbYObqaWLYz8uM16m3taZYE9fcn2BhYeHiImJhISNlI+IiYuDc2pxhJqknYdsV1JgfZ2tppJ/dHFxb2xpaXSJnKWdgls/NDtlq9/UlFtNX3WChoaFhIeKh4KFkpqTiIWGfXFtdoiaoZiBaVhWZX+ZpqCQf3Z0dXNtZGJwiKCpn4NeQjQ3Yare0pReUmJ0fYGDhYmPkYh+gI2XkomKi4FwaXGFm6OXgGlbWWV8laWjk4F2c3Fua2dndIqgp5p8Vz4zOmu25M+KVU1ieYOFhIaLkI+Hf4KQmJKJiYh9b254jJyej3dkWl1tg5mlopF8b2xtb25qbHeNoKSUdFQ9MD17yOrCelBSaHuChIWIjZGPhoGHkZKKh4uKfnNweYubm4x0YlxicoWYop6PfXJtbGpnZW2Cm6adhWVLOTFLk9fhqWhQW216goeLj5SUiXx9i5iVjIqMhnpxcXyQnZmEbWFhaHWHmaGZiXt0cGxnYWFwi6SpmXpaQTAwYbLp2JNbTVxteoSLkJebk4F1fI+ZlY6PjoJyaXCGnJ+OdmZgZG59kaChk4J1bmppZWBmfp2to4ZkSTMoRJTf661mSVFneoaNkJWbl4d1dYianJSRkYZ1aWl5lKOZf2phYWh2iJqjnY5+cGZiYWFneZWoppBwUTomMXbM8MR4TlBhcYCNlJeamo58dICVnJWPkIt9b2lyiZybhnBlZGhxgJShoJOCdGpkYV9ico+mqZd2VUAwMGG06NOKWVJfa3iGkJecnZaDdHqPmpWQk5KDcWlvgZWcjHZpZ2hseZGjo5SCdnBpYlpccI6lqJh9XkUuKFmu5taQWU5cbXuHkJidnZSDdXqPnJiRkI+BcWlwg5aaiXRoZmdrepSoqJV/c2xmYFpgdpGjpJd9XD0lJ1+26taPVkpZcH+HjZeio5V/cXqPmpiSko1/cGpxgpSYiXNmY2Vse5aqqJaAcGVgXV1nfZelopR6WTgkLW7C7c6EUEhacoGIjpqkoZF9c36RmZaTlY5+bWdvhJibiXJkX2Nug56qpJF/cGVgXV1ogJmmpJFyUjglNX3O7sF2TEpcc4OPl5+inIx4c4OXmpOPkYx9bWdwhpmYhG5iYWdziKConox8b2VhX15pgp2mnodrUDYlQZLb6K5rTU9fdIaPlp+ln4lyb4GVmpWTk4t7a2dziZiSfm5mZGp4j6Gil4l7bWVhWVhtkKmqmHteQyokV7Dq35xgRkthe4ySmaWpm4FvcoWUmJeXlIh3aWd2jJSKeW9qZml5k6SkloV2a2NcVl55mqqjjHFZPiYtc8nyz4VSRlNqfoqToKqnlHlsd4yWlpaYkoNxZ2x9jpCEdWtmZG6GoKqhj3tsYlxaXXKPpKWUfGJKMilSpeXmqmlKTF5zgouXpqyfhnBwgZCUk5aWjn9waXCBi4d8dG1oanuUo5+Uh3prYFlXYnyXpqSQcVM6KDZ7y+3IhlpOVWR2hpWlrqiRdmt1iJWYmpiRgnJnan2PkIFxaGdocoqhp5uLfnFlW1RYcJCmp5d7XkIpKWK6792cZE1NW26BkqKurZt9aW+CkJWan5uMdmVldYmNg3Zwbmttf5imn4+BdmxiV1RkhKGpm4FlSi4kUKbm5KtzVk9WaHuLm6yxoYNtbX2LkZegn5J9bGhzgoiAdXJxbnB+kp2akYV4bWRaVGGCnqWag2hNMypSouHirnhbU1lmdoaZqa2hh3FueomQl52dkX9waXB/h4J3cHBwcn+QmZiRiXxuX1NVbIucm5KCbFE1K1Om5OCqdFdRXWt1fpGnsKOIcW99iIySnaGWgnBob32FgXhxb3F2gpKbmJKHeGphW1log5idlYJqUDUsWq7n3aV0WlRcaHOBlaetoYhzcXyDh5Oip5qDbGJtf4d+c3J0dXaBkZiWkIh8cGRWU2SCm6ScgWFDJylnwO/Wm29aVFplcoOarbGfgW9yfoCElaiqmoJsY2l4gH55d3d1eISQk5KQi4BvXFBXcI2foJB4XkEpNXvM68mSbFlTW2d0hp6vr5h7a3F9g4yerKaQeGdlcoGEfnd0c3R8i5aWkoyFeGhYU2F9k5mWiHFUNypLm9zjtoNkWFpjanaNpbGmjHRtd3+Dj6OtoolwZGh4goB4dnd2d4GPlZKPjIR2ZlVRY4CWnZaCZUYtLma56dafc1xWXmhveo6kraCHc3F4fYWXqq2bgGpiaXmCgHp2dXN3hZKWkYyJhHdiT09niqCiknZXOitCitHkwZNxXFdeaHCAmq6slnttb3d+jqSyq5J2YmJwf4J/e3l4eH2HkJKQjYmAb1tQWneVoJiDak4xL2S04dGlgmpaV19pd5CosaCDcHB4fIKTqbCihmxfZXSAf3t6eXV2gI2SkY+MgnJeUlhwipeWiXJYPCxKldbctItyY15hZW+DnayljnZudX2BjJ+rp5N6ZmNwfX97enl5en+HjY+SkYl7Z1dYaoOUlop2YEczQ4PJ3buSe2xkY2Vre5OlpZN9cXR8gIeXp6qchnFobXh7d3V6f39/hYyNjo6LgXFfVmN9kpSKemVPOTxutdnEnIFwZmZrbXSGm6SahXZ1fH1/jaKroox3ampyd3VzeX+Bf4CEiY2OioR7aFdZcYqVj35oUTs3Y6rVxp2Cdm5rbGxxgpeim4l3dHt/gYqcqKaUfGpoc3t4c3Z8fn6BhoiKj5GJemdaXnKJko19aldEOlibz8uig3dybm5vcXqMnJ+QfXN3fHyEl6eomoVzbHB3d3N1en+BhImKi42MhntrXl9whZGOfmlXRj1Wlc3Op4N1cXFxcHB5i5qdkoB1eH6AhZSjppuHd3F0d3RvcnyDhISIiYeJjIuDdWZgan+MiXxuYU4+UY7Hy6SBdXV2dnJwdoWVm5F/dXqAgYGNnqagjnlra3JycHN7gYOFiIaDhYqHgHRoZXB/hYB2a2BQQVWSycqffHN1eXt2cXaGlZeOgnx9fX6DkZ6jnIx7cXBzcW1weoWKi4mBfYKMjYR2a2htdX6EgnZjSjtSlMvMoHpwd319dm9yhJeZjH97f4B+gIubpqORe21scnRzdXyChYmJgn2Ej5CAa2Jrd3+FhnpjUUdHaqfNu4xwcXyBfXZ0fYqSkYh8eX+DgoOPnaGZintwb3Rzb3J/i42JhYCAhIeGfnNvdHp+fHRoXlNLXpTEwJNxbHR+h4Z+eoCIiYR+fIGHh4OHlJ6ckYR5dHNwbW95hIuOjIJ6e4WLhnhucXl9fnxzZVRESnq3za1+aG19iYqAd3yJkIt/eHyFhn9+jJ2jm4t4a2txc3N6goaIi4mDf3+Dg311dHqAgnxvY1VFSHe40a18Z25/iIF3eYaQjoZ7dHmHjYeAhpSdl4l9eXx3bGZvgIuLiIWAgYmOiHlta3J7gIF/d2ZPO0qFwcunfW9zenx7enyCh42Mg3x9gH18iZqhmY2DenVzcXByeYKIiIeFgICJkY17aGNugIqEdWhdSkFjpcy4jXV1en14dHiCiIuMhnx6gIN/gZCen5WIfXh4dGxqc3+Gio2Jf3yFj419a2p4iIh5bGZlWEZRi8TInXhscHmDh4R/foWLhnx5goiCf4iVm5iQhHp3d3Jra3SCjpCJgXp9iJGLeGpteoKAeXBmV0ZKerbKqX9tb3iFioN8fYWJhoB8gIWEfoKOm52Vh3p3eXRqZ3OEj4+KgXp7hYyIe3J0fIB+dWxkWEdKebbMrH5oa3iHjoR5fImPhnh0foqLgn+JlpuTh356eHNraHGAjI6LiISBg4aEenJzfIKAeG5lWUZGdLbQsIBoa3mHiYB7g46Ngnd0e4aKhoSOmZqPhH58fHhuZ2x7i5KOg3p7hIuJf3d3fHx3dHFrXkpGba3Ot4dpZnGBj42Cf4WKhHl0eoSIhYWMlZeSiX94eHl0a2p2h5GSiX55e4KFgXx7gYN+cWVeWU5PdbDNtIRoZGx+j5SMhYWFf3VzeoSJiIaKkZSRiYB7e3lwaGx6iZCOhn99f4GAfn2AhIeEc1xPT1Bdib7NqnhfYG6CkpONjI6HeW1seIaNi4qPlJCJg4B9fXlvaG18i5WShXVyfYmIfHmEjIh4aF5bVUxYisHNqHpgW2iBlpeOiouGem5sd4aNioiNk5SNgnp6fHhuaXB/jpSQhHh2fIKAen2Jkox3XU5PVFduoMnClm9eX3GHkI2MkpKEc2pteYePjo2PkY6GgH+DgHFiYnSJkpCKhH18goV/eH2IjYJvYVxdVExnos7Ck2tcY3qNj4qMko6AcGhvgI2Oi4yRko2HgX1+e3JnZnKEkZOMgXt9goJ9eoCJjIJvW1VaWVVupMu/kmtfaXyGhoiSlYt8cGxygo2Nh4mPk5CMh4J8dGljanqJkZCIfXmAiYh7c3mHjoVxYVxeVUxopM3AkWtfan6JiISJj4+Fd25xf4qLiY2Ulo+GgH18eW9maXiIkZGHe3iBi4h7d4CLintpXl5fVE5uqs++jWdcaoCMioaMko+Ccmpue4mOjo+Tk42Ffnx9eXBna3qJkZKKfHN3hImCfoWNiXhkVlVWU2COv8qofWFYZYCWmpWTj4N1amhzhZOTjY2OjYeCfoCCe21kbH+Ok4yAdneAhoJ9goyOg3JgVFFPUnGp0MOTaVhbb4ucmZSTkIJuZWt6iI2OkJSTjYR9fH59c2lmcYOQk4x/eHl+fnp9ipSRgGpVS05UY4m4y7GFZVlje4+Tk5iZi3ZmY21/jZKRk5OPh4F9f4F5a2Jpe4mQjod+e36BfXl/jZaPel1JS1ZaapXDx6B1YWFxgoySmJqRgXFkZHSKlZGMjpGMhH5+g4N4aGNvgYuNi4eCf357eHyGk5SDZU1QX19cea3IsINmYmx5g4qTnJqLeGhibIGSlI+QlJCGfXyAg31vZWp6ipGNhHp6gIOCfn+GioZ2YVZdZlxYerHKr4FlYm+DjYyKj5ONfm5nb4GQko+OkI+Kg317fXluZ25/jJCLgXh4foODgYKEg390ZlpYVVJqocvAkm5jZXGHlpaPjoyDdm1veoeMjI2Rko6Gf3p7eXNqaneHjYqEfXl8g4aAfYOKin9sV1JbXFl1rM+5hmReanyLkJGUlIl7cGtvfo2RjYuPkY2Ffnx9enBqbnuHjYuEfXyBhIB5foqSiXJeVVpiXFt+tcusfGFeaoGUlI2Okop3aGd0hpGPjY+Rj4qGgH58eHBqbn6Qk4Z4dHqBhYOBhYuKgnJdTVBaW2ubyMSWa1xld4WMkJickn9tZWl5iZGOjJCTjoR+f4OAdWhlcYSRkYmAeXl8f4CCiI6OgWVLSVpjZH6uyLCCZV9meYyVl5iUiHdpZGx+kZeSj5GRiX55foN+cGZtgI2Oh4F9e3+DfnqEkZKFb1lOV19XXo7FzJ9wXGBwgo+SlJmWhW9jZXWIkI+Nk5aQhH1/g4F1aGd0hY+Ri4B2eYCFgH6Fjo1/a1dQVFRXerPQtoJiXGJ1jpqWkZOOemdkcoKMjo6Qj46MiIF8fHpyaGh3ipORiHx2fIN/eoOTl4hyXVFUWlhhjL/MpXRdYXGAiJCYnJSCcGVndoiSj4qMkY6HgoKDfnJmZG9/i5GNhHx6gISBfIGLkIZzX1NTVVhzpcm9kGtdX3ONl5GPlZB8aWVufYqOj4+Qj4qEf35/fHJpaniIj4uDf3+Afnt/h46OinxiS0xeZGWDtcepfGFebIOQkZKXlYVyZmZyhZKVkIyKi4iBfYGCeGhlcYONj4qCe3h4fYSJjZCMfGRSUl1cWnmxz7aDYVpkepKZlZWXjndjYXCEjo+Nj5COh4B+f4B6b2hse4qOioJ8eXyAfn+Ik5aKclRFT1xfcqPKv45nXWZ1gouUoKSXfmVbZHqOlI+OkY+GfHuCh4JwYmV4i5GNhHt3e4GAfYOQl5B5WEZQX11ijcPOpHBYXm+AiZKcoZeEcGJicoiSkI2SlI6Df4CDf3NmZnSFjo6Kgnl1eoCCg4qRjHtmV1VbV1RyrtK9h2BZY3mRm5WSk4x6aGVvgY+Vj4uNj4yEfXyAgHZpaHeIjomEfnp5e31/iJKShXFbUFZZVGeezcaVaVlecYqXlJWbloFqYWl7i5KRkI+NiIJ8fIOEd2ZjdYiPioWCf3x8f4B/g4yPhG1XTlBOWYnD1K15X11nfJCUkpaajndlZHCAi5CSlJWQhnx2e4SCcmRmeoySj4Z8dnZ+hIWGjJGJdFpLTlRVbaLQypdnVl90hoyRnKKVfGliaHiIj46PlZaOf3Z6hYh5ZmN1h42JhIB9f4OCe3mCkZiJZkpMYGFYbqfOvIlkW2Z6jZSUlZaQf2tgZ32PkpCQko6FgH6BhoBwY2d6io2IhIGAgYF+enyGkI99Y1JWX1hYgbzRqnddYHKFj4yMk5aNemZgboeVkYmMk5KIfnuAg3pqY22AjZGMgXh2fISEgYSKi4NxXVJWWVZon8/Hk2dcY3KJmZePj5CDbmNrfYyOi4qPko2Hgn58eXFpbHuHiIWDhISEgn52eYWRj4FsW1RVUlh/t8+yfmBebIGQjouSmpB3ZGRxgYyPjZCTkYZ8e4GEe2xmcH+HiImIg3t7goeCf4WOjXlcTVhkXF+KvseedGRlb4KQk5GSkIV0ZmRyiZWSi46WlIZ6eH+Bd2lndoaKhoSDfHqAhYJ+g4qMhXFaUVpfWWmaxcCTbWJqd4OKkJWXj39tZGx/jY2GipWYjYB9gIN9bmVpeIaOj4uBd3d+hYN+hJGXhmJFSmFlWnGqzLWCZmdtcn6QnZ6Uh3lsZG+EkY+KjpWQhX+Chod7aF9pfoyQjYV8eX2DhYGAg4uOf2JOVmZdUW+v07iAYWNxeoSPlpiRhnhqZnGIko2Fi5WVi4F9f4F6a2RugY2MhoB9foKHhYF/g4uKeWJUWWJbV3q0z654XWN0hIuLi5GWj3tmX2+Ik4+KjpKOiISAf4B6bWJpf5CSi4F5eICHhX9/hoqIfWpYUlRRWIK90q95X2Ftf5GWj42Rjn5rZW+CjYyJj5aTioJ8en58cWZqfIyRjIJ4dnyEh4WFh4qHeGFRV2RcU3W01bZ8WlxuhZSUjo6Ri3trZ3GEj4yHjJOSjIaCfnt4cWtufImOiYF8enx/hIiHhISHgGhRTlpbW320z7F7X19rfpGZlI+PhndsbHWCi42MjpKSjIR/gIF5amJsfYqNjIeAe3t+g4SBgYeOh21RSllfVmmi0seQY11re4WKj5SWi3ptam9+jZCMi5OVjoWBgH95bmRldouYlIZ4dn6Dg4SFhIKGhHBXUV5jV1+RxsqbbF9qfImPjYqLioB0bXB+ioyJipKWkoqDgIB9cWJgcYiVkod8eX+DhoaCfH2HiXhkXGBfUE52tNK2f2Fkd4KDhYuTk4l5bWp0ho+MiI2VlY6HgX59d2pia36PlZGEd3V8ho2IfXqChHtwZl1US0ttqtTFjmRZY3iPm5OHhYeBdGxzg42Lh4uUlpGKg317eXFoZ3SIk5CHe3d8hYuGe3V8h4Z3a2NdUEJTjsvWqXNbX2+FlpaMhYaGfnRvdYCIjI+Ul5WPhnp1dndxa25+jpOIeXR8h46LgXh4gYV+cWZdU0dIcbPXvYZkX2t/jIyJkJiPem1scnqCiY+VmZiSiH54ent0aWh3iY+Kg317gIeLiH96e3+Cf3RjVlBHTXq71reBY2ZzfYCEjJKSin9za3B+iYqKkpyckYZ/fHx3bGNpfI6VkIR3dH2Ji4V+en6GhXViV1laTlGAwNm0elxfcYaSj4WGioh+dHB2goiJi5OYl5KLgXp4c2ljbICQlI1+dHiEjImAe3yBgn1zZ15bV0xXisTTqnZfaXyGh4WGjY+KfXFtd4WJhoiSmpeNhYB+eW9kZHSHkpGIfHZ7hYyLgnd1e4OFfG1bTUJFcbXbv4ZmZG14i5SMgoSKhXdxdoCFhYiQmZmSiYB6eXlzZ2Rxh5WUh3t3fYWMiHx3fYaHemhbVlFGT4bI27F3XF9xhpGOiYyOhXdwcHeBh4qNlZqUi4aDf310Z2Bqf5GVjH51eH+FioqCeXmChn1oVE5MSmKe0tCba1xjcoeXlYqGiIN6cnB2gouOkJWWkIqHgX16dGhhan+RmJB/dXh/goSFg3+BhoJwWlFRTE53t9q+hGFdaHuRmZGJiop/cm1zgIqMjI+Tk46LhH18enBjY3SKlpSJfHd6gIaGf3uAiIh8allRS0NUj83aq3NaXG6Fk5GLjZKLe2xpc4ONjY+WmZOJgn9+fXdrYmt9jZORhXZzfYaMioF3d4KHemhaU0pDXZzS0Z9uXWBvhpaSh4eNiXtubnmEiIqQmJqVjYV8eXp0amRvg5OXjHxzeIOKiIB6eoGIgG5cV1pRSmqs1sOKZF9tgY+OhoaPj4J0bXJ+iImJkZmYkIeBfn15b2RoeYmSkYd6c3mFjImAd3eAhYBvXFRTSk5+wNu3fl9daoCWmImCiI2Edm5zgIiJjZaak4uGgHp4dm5ma3yLk5CEdnSAi42Fe3d4foKAc2BSRD5cntbTnm1eYnGGlI6Dg42NgHNvdX6EjJWdmZGKhX55eXRqZW+Dk5WMgHZ0fYmOhXt2eH6EgnFZSkFBaa3bzZNnXGR0h5ORiYaJh35zcXiChomSm5uUioF6eXt2aGVyhpSXj39ubnyKi4R+foGFgXBaT0tFU4rI16x2XF1whpGNio+SiXlvcHmChYWKl56XjIR+fX13aWJsgI+WkIF0c3qFioeAfH+EgnlrWEpER2ej1NCca1hcbYeamI2KjYh6b3B6goWHkJuclo+GeXR2dW1ncYSSk4l5cHWDjY+FeXmFin1pX1xcU0lgn9LMmWxdYXSOmY+EiJCJeWxseoiLipCZm5SMgXl3dnJpZ3WKlpOGeXN2gIiLioR8e3x5b2NcWEtHb7TZv4RhX22Aj5CGhY2Pg3JrcX+JiomQmZqUjIF6eHVuZmp6ipOSh3pzd4CKkIp+eH6FgW1YUldTSmmv3seHX19wf4qNiIWIi4R3bXGBiYiIkJublY2Ff3x0Z19oe42WlId4c3qCiY2HeXB2goV5ZFVTTURhqN7Pj2RicH6KjISAiJCLfnJxfIeHho2an5uPgHZ1dm1jZ3mIj5KKe3J5hYyOiHx0dn1/eGpdVUtEZKnayY1kYnCBjY2Bf4mPh3p0d36ChIeQmZyZkoR3c3JsY2h7jZSVi3ltc4GOkYp8cnR7fnhsYFdMRGGj182TZ2FtfY2RhnyDjId7dXl/gYCEj5ufmpCDd3N1cWZjcoiXmo57b3J+i5CJfnh6fXxzZFhTTUtsq9fFi2NjdYGEhoiNjYh+dnF1gIiHhY+foZWIgX16dm1iZHaMlpSHd3F4gYmTj31ucX+CdWNZWE9GZqrayIxjYHCDj42EgomNhXlydH6GhoeQnJ2Vi4J7fHlsXmN4i5WWh3NqdIaWnJB4aGhxfoV+aFNFPFWZ1NObamFwgo+MfXaCkZGDdXR+h4aAhJWjo5aEdnR3cmZgbYCRmZJ/cHSGkY2Cdm9yf4mEc2BWSz5NjM7Zp3NjbXyEg31/ipSQgnVye4WGgYaVoJ2UiH15eXJjXWuCk5iRf3FxfoqRkIJwbHiDgXNiWFJGS37D27F3YGh6io2CeYKPkIR4cneCh4SFkqCimIt+dXVyaGFrfo6Wl4hxaXaJk5GDdXR8gnppWFFUUVV+vNi3fV9hdoyTiH2Bi4uBdnJ3goiHiJKcnJWMg3t4cWRcaIGUl4+DeXh/hIiKhHh1foV9alpTU0xRgMDZsXdeZ3qJjod/g4uMhHhxdYKJiImSnZyShn9/fnZlW2V8j5iVhXRueomQkYZ1bnaBgnhqW09DRnK12r+GZGJwgZGQgXmDj41+c3N8hIaJkpudmI6Cd3V2cGVkc4eUlot5bXWEkJKGc2p1h4yCbVVFP0NrrtrKk2hgaHaJlI2Cg4mIf3h1eYCFipCZnZiNgnt8fHFhXW2DkpiVhXNweoaKhX17gYWCdWRST1JOXJfT1p5pWWV9j5OJhYqLg3pzcnuJjoqIj5iXkIiCfnpuX19xhI+Vk4RzcXyIjop8dHmDiIBpT0dNTFqS0tulalZkfI+SioeKjIZ8cm51hY2KipSemoyEgIB+dGRfbYGMkZGDc3OAiIyNgG1rfo2JdV5QSkNKfMLgun1gYW6AlJaIgIiPhXZvdYCFhoqUnJqTioB4eHhvY2R2iZOWjnlrdImRi4N9d3Z7gX5sWE5KRWCj29KTYVxvgo6Og3+Hj4t/dXN6gYKFj52hmI6EeXV3dGhhboOSmJKAcHKEjYqGgnh0eYKBdGBSS0RNg8ffsnFXZ3+LiYJ/h46Ng3h0eoSGgoaVo6KUhX16fHVlW2V8kJiWh3NreYmPj4p7bGt5h4VyWUxGQ1mc2tqeaF5uf4uMgXqBjI6Fend8gYKDjZ2knpKGe3d3bmBeb4WSl5SBa2h9j5aTh3RoaneAf3JjV0U9ZrLfxINgaX6LioF4fIqSjoF3d32Af4OUpKSZjH50dXZtYmZ4iJKWjHltdIaSlo55Z2h1g4mAZk1DQVOOzNalcmh0e4CEgXt/ipCMgnd0eX6Cj6CmnpOKfHN1cWZgbYKPlZaIcWd1jZqZiXBfY3OEi39kUEc/UpHS16FyanR8g4N6doKWm498cHR+gYGMoKqikH9zc3hyZF9vhZKVkIBuboCPkpKFbV9pfYmHc1pMQ0FosN3Gi2lqdoKHf3V8jpmRgnZ1e36AiJWjpJqKe3R3eG1fYneIkJSPgHJ0g4yQi3hobH+KgW1ZUlJLU4nL2ap0Y2t9jIl7d4OSkoR4dHyEhYSJl6Kfk4d8dnZuYV1uhZKTjH10eIaOkI19aWV1h4h7aFtSRD5otOHFh2Vlc4aQhnd5iZONfnZ4goWDhpGeoZqPgXZ2c2dcZHqMlJSIeG92h5GTi3ZkZXqMindjVks8R4jR36x0Yml5iY5/c3uRmo97cXeAgoOKmaOgloh4dHdzZV1of5GYkYFzcYCOkpKEaVtphZGHc19QPzZaqN/Tlmpkbn+NiXdxg5iXhnl2fH19hZSkp56OfHF1enJiX3KIk5WLe250g42RkoJrYnCChXxsW1BEQW654cKDY2d4iY+CcniNmZCBdnd+gYGEkqKlmYl6dHd2a11ieIyVk4d2coCPko6Eb19nfYyLfWZTRThHi9Pgq3RlbnuEg3p2hJaZi3t0d31/hZKhpp2PgXd4fHVjW2l/j5eVg29qeoyVl4pwX2R3hId/bVtJNkOI0eGsdWVsdoCGfneCl56QfnJ0en2DkaSqn4+Bc3B5em1hZ3aEkpmNd3B8jZeXhGRTYoSWkHxiTkA1SY7U4rB4Y2dyf4V/fIiWl4p7cnV5fYeYqa2eiXlyd353aGBpe4mSkIR1cXqLmJuLaVFae5SWhWhMODBNl9jfq3dmbXh/fnd5ipybi3lxc3h9hpeorJ+Me3F3f3ZjWmiBkJWPgXNygZGWkn9kWGV/j4+BaE8/NUiK0uW1fGZocn1/dnaJn6KPem9yeX+Fk6Wsoo9+c3N4dGVcaH6QmJSDcG19kJeWh2tYX3eHjIl3XUY0PHfC4byDamx1fX10cIGdqJiAcnN5e4GPoqylk4FzcXZ3bGBmeIWNko1/eoSNjYl+aFtngI6Mgm5YRzg6b8DnyItraHF5eXNzhJumm4NwbXZ/hpCfqqSSgHRzfHpqW2F3iZCRiHt2f42Tk4duV1lyjpeMdl5MOTJcrOPVmW9nbHV6d3WBmKeginVudX+DiJiprJ2FcGp1e3BiYnKEjpKMf3R3iJaYj3ZZUWeHlY+AalZBL0GM2OeyeWZqdHd0bnWOqK2ZfWxueH+HlqWsoo54a3B5dGZfaX2MlJGFend+i5aXgmVUYHuNj4p6YUoyL2K26tOSZ2BsenxycIOfrqSNdWx0fYCKnrGumX9qZXF7c2Jjc4GKj4yEgIWIh4uKel9WZ4KRlI11VTonNnvO7sWDYV1ndn13epGrr5uBbmt0go2Vo62lkHlsbnh3amFneYiPjoZ7eICKkpOHa1NUa4aXmY1vTzYnPovZ7Ld5X2Frc3V1gpyyrZN5bnF7g4qWp7Cjh25ncn58a2Bmd4WKjIqBf4SJjYt+ZlZdc4qVk4RqVT8qN4LT7Lx9XlxldH19hZuxsZZ0Yml9jpaeqKiZg25mc4OBbmBicX+LkY6DfH6FkJSGa1JNZIedn5F1VDckMXbK78eAVlJieoaCgpi0tpp5aGp5iJKcqa6hhGddbIOLfWRcaHiCipKRhn6Di4+JclZKXH+apZ+DXDcbH1689N2OVUlWb4SIh5i3wqZ7ZGt7ho2ZrLWnh2ZXYn6QiG1cYnB7h5KTh32AipCLeWFQWHOMmpuOc1MzHTOG2e2zak5WbIOIgISgu7eWd21zfYWOnq2um3xhXHKKjHhhXm16houLhYGBhI+ZjWxPR1x+maOciGZDJxxFnuPjoGFOW3SHiICJp8G4lHBgboSOkJyur5ZzXF95kIxwVlpvfIKHjo2HgoKKkYRpUk9jhJqgmYhuTi4dQpvf351eTVlyiYp+h6nDuJR0aXaGioyar7KWcltge42EZVFgeIOGiImFf4GGjZWNdFRFWX6bpp+Mb04tGjeO2OWtZktUbYSGgY+uwreWeGlwgImOm62ymXVeX3OGhG9aX3iHh4B9fX6EiY2Qi3pgSlN0l6momHZKJhUwhdTrunBPVGd3foKVtMW4k3JjbICNlJyrr5l0Wl17l5V0VlRod36Gj5CJgXp7h4yDbVVRaYulq5+CVy8VG1++89aBRkRigo+KiZ26vqN/bHB9iI+WoaighWpgb4uXg15MWnSBipGRhXZweImXj3RYT115l66zonI4Ew0zjeL5vGdET2l8g4iXscO4lnRla3qHlKKqoYdtZHCGlZB0WFBfb3+WpZuEdnZ9f4B+c2Bbboqir6yJUCEOHmK66tKHUElZboSUmp6rs6aIcnJ/hoeOnaSUdmZsgp2hhl9FRlt5m7OtjHFveHt8gYN5Zl1riai3qX5IHxEmbsHmwXdMUGJwfomTpbrBqn9laoGNjJOho4tqXW2IoaSMZUdGVmmGp7aojXZmYWqBk5OBaWJui6KpnXtMJRQ1i9LZm1tLVmJxhpair7evlHZreYiJipakmn1laIGappJrSkdZaXqYs7KTcWJncn+LkIuCcF1hg6m3o3hKKx4qbL7oyntDP1Flf5uutbKnjnVueoiJhpKdmYRvcoGMk5SGaElGWXGLqr6whV9SXHONoKOUfmRUX4SjqJ6KZDgaHl246M+ET0NKVnKVrbzBs5BrW2R8j5idopmBaWd8kZyYgmVNS1tzkauyoXxdVWF3jJyjn494Yl1qgJCYmY1wTDQvRYXK3a5kPDtSdJy1u7WkimxcZoKZnJSSlY9+b3SEkpqSeV5PU2N+obWpiGRPT2WEmZ6fnI57cG5ydHaAjZSPh4NvSjU6XqHZ0YlFOlyEnaaeinhsbHWDkp6aiX2BiYh/f42Ym5F9aFtcbH6MlZaHb2BkdISMjoiAe36Gi4qGgn16eXh6gISIjY19YEpFS2ieyr+KX1lncXeCj5mZkoh+eYGLjoqLkpGFeXiDj5eUhG1eWV1qg5ugj3hnYmhzf4qUk4Z3cnqEiIeHiYZ+eoOOjYFwa3aHj4l9cV9LQ1yYy8OJVkxge42Tk5aYj351f5GXi36AjJKKfXh+houJgHRnX19pfZWflHxlWmByhY6QkI2If3p8f39/hIuNhnx5f4iLiIR9dnd8e3Nve4qOhXlwal9UWIC1xqZ5Y2Nuf5CXl5aQgHR1g5GRhXx+hYN5cXiIk5CAb2lscXF1hJKRgm9mbHqFh4WEhIOCf32AiY6Jgn5/fnx9hY2Ng3dzeICEgoCChYR/eXZ2eHh6gIWFgXluYFprkK6qjXNqbnqJlZSMhYB9foKIjImCeXd/h4R5doCMjYBxbHBzdXqFi4l+c2tueYaMiYJ+fX6AhIqMioJ9fH+DhIODhoiEeXF1f4eHgn17enh3e4KDgYB/fXx9fXt9gYaIhXxzcXNydIWdoY13bW94hI6NhoSFg315fISLiYB6fYB+enyCiYuCdW1wd36Ch4iDfHd1d3uBg4ODhIN/fHx/goSDgoB/f31+goeHgXp3eXx/gYKDgn97eHl/hIOAgIGAfn6ChISEg4KAgH99e36ChISBe3Vyc3V7hoyIgHp3eX6Dg4KFhoOAgIGCg4OBgIGCf31/g4WEgXx5eXx9foGCgX99enl9gICAgIKCf31+gIKCgYCAfnx8foGEhIF9e3x9f4GCgoF/fn5/f4CAf3+BgoB9fn+Cg4KAfX1/gICAgoKBgH5+f4B/fX1+f4B/fnx6eXl8goSDgX59fYGDg4GAgYKCgYKCgoKAf3+BgYF/f4CAgH9+fX19fn9/f35+fX5+f39/gH9/f39/gICAf39/gH9+fn6AgYGBgH9/f3+BgYGBgYCAgICAgICAgIB/gIB/f39/f39/f39/f4B/f39/f39/f4CAgIB/f4CAgICAgH9/f39/f39/f39/f39/f39/gIGCgYCAgICAgIGBgYCBgICAgIB/f4CAgH9+f3+Af35+fn5+f39/f35+f35/gICAgH9/gICBgYGAgICBgICAgICAgICAgH9/f39/gH9/f39/f39/gH9/f4B/gICAf4B/gICAgICAgH+AgICAgH+Af39/f39/f4CAf39/gICAgICAgICAgH9/gIB/gH9/f39/f39/f39/f3+AgH9/gICAgICAgICAgIB/gICAgICAgH9/f3+AgICAgH9/f3+AgH9/gICAgICAf39/f39/f39/f39/f39/f3+AgH+AgIB/gICAgICAgICAgH+AgICAgICAf39/f39/gH9/f39/f39/f4B/f3+AgH9/f39/gIB/f4B/f39/f4CAf4CAgICAgICAgICAgICAgICAgICAgIB/f39/f4CAgH+Af39/f39/f3+AgH9/gH9/f39/gICAgIB/gICAf3+AgICAgIB/f4CAgICAgICAgICAgH+AgH+AgH9/f39/f4CAgH9/f3+AgIB/f3+AgICAf39/f39/f3+Af39/f39/f4B/f4CAgICAgICAgICBgX+Af4CAgYCAf39/f39/f4B/f39/f39/f3+AgICAf39/gIB/f39/f4CAf4CAf39/f4CAgIB/f4CAf3+AgICAgICAgIB/f4CBgYCAgH+Af4CAgH+AgH9/f39/f3+AgIB/f3+Af35/f4CAgH9+f4B/gICAgICAgH+AgIB/gICAgIB/fn+AgYGAf39/gICAf39/f4B/gICAf4CAf35+f4CAf3+BgYB/fn1+f4CBgH9+fn5/gIKCf319fX+BgoGBgIB/fn5/gYGBgIB+fn+AgICAgX99fX5/gYKBf359fn+AgYKAf35+f39/gIGBgH9/f4CAgH9/gIB/fn5/f4CBgYB+fX1+gIGBgH9/f35/gYSFhIF9e31/goSDgX99fH1/gIGBgX58e31/gIGAgIB/f359f4GCgoGAgH9+f3+BgoOBfn19f4CAgIGAgH58fX+BgYF/f35+fn+AgoKBgH9/gICBgYCBgIGAf35+f4GBgH18fX6AgH9+fn5+f35/gIF/f3+AgYB/foCCgYB/gH+AgICAgIB/fn+AgYF/f39/gICAgICAgH9/f4CAgH9/gICAf35+foCAf39/f4B/f39/f39/gICAgIB/f4CAgICAgIB/f4CAgIB/f4CAgH+Af39/gH+AgICAf39/f4B/f39/gICAf39/gICAf4CAgICAf3+AgICAgH+AgICAgH9/gH+AgIB/f39/f4CBgIB/f4CAgICAgICAf4CAf39/f4CAf39+f39/f39/f39/f4CAgICAf3+AgICAgICAgICAgICAgICAf4B/f39/gICAf39/f4CAgH9/f39/gIB/f39/f39/gH+Af3+Af4B/gICAgICAgICAgICAgICAgICAgH+AgICAgH9/gH9/f39/f4CAf39/gH9/f39/gH9/f39/f39/f4B/f3+Af4B/gIB/gH+AgICAgICAgICAgICAgICAgICAgH+AgH9/f39/f39/f39/f39/f3+AgH9/f3+AgIGBgH9+fn6AgoGAf3+AgYB/f4CAgICAgIB/f3+AgICAgIB/f3+AgYCAfn5/gIB/f4B/f4B/f35+f3+AgIB/f39/f39/gICAgICAgH9/gICBgH+Af4CAf4CAgIB/f4B/gH+AgICAf39/f35+f39/f39+f4CAf39+f4CAgICAgIB/f3+AgICAf3+AgICAgH9/f4CAgICAf3+Af4CAgYKAf31+gIGBf35/gIB/f35/f39/f4B+fn5/gICAf39/gIB/f3+AgICAgICBgH+AgICAgICAgICAgYCAf39/f4CAgH9/f35+fn9/f35+fn9/gH9/f35+f3+BgYODgH18fYGDgn9/f4GBgH5/f39/f4CBgH5+f4GBgH5/f4B/f4CBgYB/f3+AgYCAf4CAgICAf35/f4CAf39/f3+Af39/f39/f39/f4CAgIB/f4B/gICAgICAgIB/f4CAgICAf3+AgICAf39/gIB/f39/gICAf39/f39/gICAgIB/f39/f4B/gICAgICAgICAgICAgICAgIB/f4B/f39/f4CAf39/gICAf3+AgH+AgICAf39/gICAgICAf4CAgIB/f4CAf39/f3+AgICAf39/f4B/f3+Af3+Af39/f39/f3+AgICAf4CAgIB/f4CAgICAgIB/f3+AgIGAf35/gICAf35+gIGAgH9/gH9/f3+Af39/gICAgH9/f3+Af3+AgH9/gH9/gH+AgH+AgH+AgICAgH+AgICAgIB/f39/f4CAgYB/f35/gH9/f4CAgIB/f39/f3+AgH+Af3+Af4B/gH9/f3+AgIB/f39/gICAf3+AgICAf3+Af39/gH9/gH9/f39/f39/f3+AgIB/f39/gICAgoKBfXx9gIOBf35/gIB/fn9/f39/gYB/fn+AgYF/f3+Af3+AgICAf39/gICAgICAgICAgIB/f3+AgICAgH9/f3+AgH9/f3+Af39/gICAf4B/gH9/gICAgH9/gH9/gICAgIB/gIB/gH+AgIB/gIB/f39/f4CAgH+Af3+Af4CAgH+Af3+AgICAgICAgICAgIB/gICAf4CAf4B/f4CAgIB/gICAf4CAgH+AgH9/gICAgH9/f4B/gICAgICAgH9/f39/f3+Af39/gICAgICAf39/gIB/f4CAgH9/f3+AgH+Af4CAf39/gH9/gH9/f4B/gICAgH9/f4CAf39/gICAf3+AgH+Af3+Af4B/gIB/f3+Af4B/f4CAf4CAf39/gIB/f39/f4CAf4B/gH+AgIB/f3+Af3+AgH+AgICAgICAf4B/gH9/gIB/gH9/gICAf4A=';
+let MOO_BUF=null,MOO_LOADING=false;
+function loadMooSample(){
+  if(!AC||MOO_BUF||MOO_LOADING)return;MOO_LOADING=true;
+  try{
+    const bin=Uint8Array.from(atob(MOO_WAV_B64),c=>c.charCodeAt(0));
+    AC.decodeAudioData(bin.buffer,b=>{MOO_BUF=b;},()=>{MOO_LOADING=false;});
+  }catch(e){MOO_LOADING=false;}
+}
+function playMooSample(){
+  if(!AC||muted)return true;
+  if(!MOO_BUF){loadMooSample();return false;}
+  const src=AC.createBufferSource();src.buffer=MOO_BUF;src.playbackRate.value=rand(0.92,1.08);
+  const g=AC.createGain();g.gain.value=0.9;src.connect(g).connect(AC.destination);src.start();return true;
+}
+function tone(f0,f1,dur,type,vol){
+  if(!AC||muted)return;
+  const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;
+  o.type=type||'sine';o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t+dur);
+  g.gain.setValueAtTime(vol||0.2,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  o.connect(g).connect(AC.destination);o.start(t);o.stop(t+dur+0.02);
+}
+function noise(dur,vol,freq){
+  if(!AC||muted)return;
+  const n=Math.floor(AC.sampleRate*dur),buf=AC.createBuffer(1,n,AC.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
+  const src=AC.createBufferSource();src.buffer=buf;
+  const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=freq||1200;
+  const g=AC.createGain();g.gain.value=vol||0.15;
+  src.connect(f).connect(g).connect(AC.destination);src.start();
+}
+function noiseBand(dur,vol,f0,f1,q,att,tremHz){
+  if(!AC||muted)return;
+  const t=AC.currentTime,n=Math.floor(AC.sampleRate*dur),buf=AC.createBuffer(1,n,AC.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
+  const src=AC.createBufferSource();src.buffer=buf;
+  const bp=AC.createBiquadFilter();bp.type='bandpass';bp.Q.value=q||1.5;
+  bp.frequency.setValueAtTime(f0,t);bp.frequency.exponentialRampToValueAtTime(Math.max(40,f1),t+dur);
+  const g=AC.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+(att||0.01));g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  src.connect(bp);
+  if(tremHz){const tg=AC.createGain();tg.gain.value=0.5;const lfo=AC.createOscillator();lfo.frequency.value=tremHz;const lg=AC.createGain();lg.gain.value=0.5;lfo.connect(lg).connect(tg.gain);lfo.start(t);lfo.stop(t+dur);bp.connect(tg).connect(g);}
+  else bp.connect(g);
+  g.connect(AC.destination);src.start(t);src.stop(t+dur+0.02);
+}
+let PULSE_WAVE=null;
+function pulseWave(){if(PULSE_WAVE)return PULSE_WAVE;const n=48,re=new Float32Array(n),im=new Float32Array(n);for(let k=1;k<n;k++)im[k]=1/Math.pow(k,0.35);PULSE_WAVE=AC.createPeriodicWave(re,im,{disableNormalization:false});return PULSE_WAVE;}
+function driveCurve(k){const n=1024,c=new Float32Array(n);for(let i=0;i<n;i++){const x=i/(n-1)*2-1;c[i]=Math.tanh(k*x)/Math.tanh(k);}return c;}
+const CONTOUR_CLASSIC=[[0,0.9],[0.15,0.93],[0.35,1.28],[0.6,1.18],[0.85,0.96],[1,0.8]];
+const FORMANTS_OO=[[360,520,320,8,1],[700,1020,650,9,0.6],[2100,3100,2200,10,0.18]];
+const MOO_PRESETS=[
+  {name:'CLASSIC',desc:'Closed hum that opens into an "oo" vowel, pitch rises then sags.',source:'sawtooth',detune:9,sub:0.3,f0:120,dur:1.0,vol:0.5,hum:0.22,contour:CONTOUR_CLASSIC,formants:FORMANTS_OO,vib:{hz:6,depth:0.04,from:0.45}},
+  {name:'PULSE VOICE',desc:'Glottal pulse source, steady fall in pitch from start to finish.',source:'pulse',sub:0.2,f0:118,dur:1.1,vol:0.9,hum:0.2,contour:[[0,1.1],[1,0.82]],formants:[[400,560,330,7,1],[800,1000,700,8,0.5],[2400,2600,2300,9,0.12]],vib:{hz:5.5,depth:0.035,from:0.4}},
+  {name:'BULL BELLOW',desc:'Deep, long and nearly flat, drooping only at the very end.',source:'sawtooth',detune:6,sub:0.5,f0:72,dur:1.6,vol:0.4,hum:0.25,contour:[[0,1.0],[0.8,1.02],[1,0.9]],formants:[[300,420,280,7,1],[620,800,560,8,0.6],[1800,2200,1700,9,0.15]],vib:{hz:4.5,depth:0.03,from:0.35},rasp:{hz:28,depth:0.35}},
+  {name:'RASPY',desc:'Vocal fry flutter and grit, pitch climbs the whole way.',source:'sawtooth',detune:12,sub:0.25,f0:115,dur:1.0,vol:0.24,hum:0.18,contour:[[0,0.85],[1,1.12]],formants:FORMANTS_OO,rasp:{hz:32,depth:0.55},drive:2.5,vib:{hz:6,depth:0.03,from:0.5}},
+  {name:'WAH',desc:'One sweeping resonance. Pitch dips in the middle and recovers.',source:'sawtooth',sub:0.2,f0:125,dur:1.0,vol:1.1,hum:0,attack:0.12,contour:[[0,1.08],[0.45,0.88],[1,1.04]],lp:{type:'bandpass',q:6,a:260,b:1100,c:380,gain:3},vib:{hz:6,depth:0.03,from:0.4}},
+  {name:'HORN',desc:'FM brass, one flat held note like a foghorn.',source:'fm',fm:{ratio:1,index:2.2},f0:135,dur:0.95,vol:0.85,hum:0,attack:0.15,contour:[[0,1.0],[1,1.0]],lp:{a:600,b:1400,c:700,q:1},vib:{hz:5,depth:0.02,from:0.5}},
+  {name:'CARTOON',desc:'Smooth tone with a long slide down. Silly on purpose.',source:'triangle',sub:0.15,f0:190,dur:0.9,vol:0.8,hum:0.1,contour:[[0,1.0],[0.2,1.05],[1,0.5]],lp:{a:500,b:1200,c:400,q:2},vib:{hz:7,depth:0.04,from:0.3}},
+  {name:'NASAL',desc:'Long closed M, tight nosey vowel, slow gentle descent.',source:'sawtooth',detune:8,sub:0.3,f0:115,dur:1.1,vol:0.8,hum:0.35,humFreq:230,humGain:0.6,contour:[[0,1.03],[0.5,1.0],[1,0.92]],formants:[[280,380,260,10,1],[900,1100,850,12,0.35],[2600,2800,2500,10,0.1]],vib:{hz:6,depth:0.03,from:0.5}},
+  {name:'CALF',desc:'Small, high and quick, with a wobbling pitch.',source:'sawtooth',detune:10,sub:0.1,f0:210,dur:0.7,vol:0.55,hum:0.12,contour:[[0,1.0],[0.2,1.15],[0.4,0.92],[0.6,1.12],[0.8,0.95],[1,1.0]],formants:[[500,650,450,8,1],[1000,1300,900,9,0.5],[2800,3200,2700,10,0.2]],vib:{hz:7.5,depth:0.05,from:0.3}},
+  {name:'TWO-NOTE',desc:'"mu-OOO". Jumps up a fourth, then settles.',source:'sawtooth',detune:7,sub:0.3,f0:115,dur:1.15,vol:0.5,hum:0.2,contour:[[0,1.0],[0.3,1.0],[0.36,1.33],[0.7,1.3],[1,1.0]],formants:[[600,380,330,7,1],[1000,760,680,8,0.55],[2400,2200,2100,10,0.15]],vib:{hz:6,depth:0.035,from:0.5}}
+];
+function synthMoo(o,variant){
+  if(!AC||muted)return;
+  const t=AC.currentTime;
+  let f=o.f0*rand(0.95,1.05),dur=o.dur,contour=o.contour;
+  if(variant==='hurt'){f*=1.25;dur=Math.min(0.9,dur*0.55);contour=[[0,1.1],[0.3,1.3],[1,0.9]];}
+  if(variant==='down'){f*=0.95;dur=Math.min(2.2,dur*1.3);contour=[[0,1.0],[0.2,1.06],[0.5,0.82],[0.8,0.62],[1,0.5]];}
+  const stopAt=t+dur+0.15,nodes=[];
+  const mkOsc=(type,mult,det)=>{const osc=AC.createOscillator();if(type==='pulse')osc.setPeriodicWave(pulseWave());else osc.type=type;if(det)osc.detune.value=det;
+    osc.frequency.setValueAtTime(f*contour[0][1]*mult,t);for(const [k,v] of contour.slice(1))osc.frequency.linearRampToValueAtTime(f*v*mult,t+k*dur);nodes.push(osc);return osc;};
+  const srcG=AC.createGain();srcG.gain.value=0.5;
+  let carrier;
+  if(o.source==='fm'){carrier=mkOsc('sine',1,0);const mod=mkOsc('sine',o.fm.ratio,0);const mg=AC.createGain();mg.gain.setValueAtTime(f*o.fm.index,t);mg.gain.linearRampToValueAtTime(f*o.fm.index*0.3,t+dur);mod.connect(mg).connect(carrier.frequency);carrier.connect(srcG);}
+  else{carrier=mkOsc(o.source,1,0);carrier.connect(srcG);if(o.detune){const o2=mkOsc(o.source,1,o.detune);const g2=AC.createGain();g2.gain.value=0.6;o2.connect(g2).connect(srcG);}}
+  if(o.sub){const sub=mkOsc('square',0.5,0);const sg=AC.createGain();sg.gain.value=o.sub;sub.connect(sg).connect(srcG);}
+  if(o.vib){const vib=AC.createOscillator();vib.frequency.value=o.vib.hz;const vg=AC.createGain();vg.gain.setValueAtTime(0,t);vg.gain.setValueAtTime(0,t+dur*o.vib.from);vg.gain.linearRampToValueAtTime(f*o.vib.depth,t+dur*Math.min(1,o.vib.from+0.25));vib.connect(vg);vg.connect(carrier.frequency);nodes.push(vib);}
+  let voice=srcG;
+  if(o.rasp){const am=AC.createGain();am.gain.value=1-o.rasp.depth*0.5;const lfo=AC.createOscillator();lfo.type='sawtooth';lfo.frequency.value=o.rasp.hz;const lg=AC.createGain();lg.gain.value=o.rasp.depth*0.5;lfo.connect(lg).connect(am.gain);nodes.push(lfo);voice.connect(am);voice=am;}
+  if(o.drive){const ws=AC.createWaveShaper();ws.curve=driveCurve(o.drive);voice.connect(ws);voice=ws;}
+  const master=AC.createGain();master.gain.value=o.vol;master.connect(AC.destination);
+  const tM=o.hum||0;
+  if(tM>0){const hum=AC.createBiquadFilter();hum.type='lowpass';hum.frequency.value=o.humFreq||260;hum.Q.value=1.2;const hg=AC.createGain();const hv=o.humGain||0.45;
+    hg.gain.setValueAtTime(0.0001,t);hg.gain.exponentialRampToValueAtTime(hv,t+0.05);hg.gain.setValueAtTime(hv,t+tM);hg.gain.exponentialRampToValueAtTime(0.05,t+tM+0.03);hg.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    voice.connect(hum).connect(hg).connect(master);}
+  const vg=AC.createGain();vg.gain.setValueAtTime(0.0001,t);
+  if(tM>0){vg.gain.setValueAtTime(0.0001,t+tM-0.005);vg.gain.exponentialRampToValueAtTime(1,t+tM+0.035);}else vg.gain.exponentialRampToValueAtTime(1,t+(o.attack||0.08));
+  vg.gain.setValueAtTime(1,t+dur*(o.sustain||0.7));vg.gain.exponentialRampToValueAtTime(0.0001,t+dur);vg.connect(master);
+  if(o.formants){for(const [fa,fb,fc,q,g] of o.formants){const bp=AC.createBiquadFilter();bp.type='bandpass';bp.Q.value=q;bp.frequency.setValueAtTime(fa,t);bp.frequency.linearRampToValueAtTime(fb,t+dur*0.45);bp.frequency.linearRampToValueAtTime(fc,t+dur);const bg=AC.createGain();bg.gain.value=g*6;voice.connect(bp).connect(bg).connect(vg);}}
+  else{const lp=AC.createBiquadFilter();lp.type=o.lp.type||'lowpass';lp.Q.value=o.lp.q||1;lp.frequency.setValueAtTime(o.lp.a,t);lp.frequency.linearRampToValueAtTime(o.lp.b,t+dur*0.4);lp.frequency.linearRampToValueAtTime(o.lp.c,t+dur);const lg=AC.createGain();lg.gain.value=o.lp.gain||1;voice.connect(lp).connect(lg).connect(vg);}
+  for(const n of nodes){n.start(t);n.stop(stopAt);}
+}
+const CUSTOM_DEF={f0:115,dur:1.95,hum:0.54,humFreq:155,open:0,move:0.36,shape:'risefall',range:0.35,vibDepth:0.01,vibHz:5,rasp:0,sub:0.27,detune:15,q:11.5,vol:0.65};
+const KNOBS=[
+  ['f0','Pitch',60,260,1,v=>v+' Hz'],
+  ['dur','Length',0.4,2.2,0.05,v=>v.toFixed(2)+' s'],
+  ['shape','Pitch shape',null,null,null,null],
+  ['range','Pitch movement',0,0.5,0.01,v=>Math.round(v*100)+'%'],
+  ['hum','M hum length',0,0.6,0.01,v=>v.toFixed(2)+' s'],
+  ['humFreq','M hum darkness',120,600,5,v=>v+' Hz'],
+  ['open','Vowel openness (oo to ah)',0,1,0.01,v=>Math.round(v*100)+'%'],
+  ['move','Vowel movement',0,1,0.01,v=>Math.round(v*100)+'%'],
+  ['q','Vowel resonance',3,16,0.5,v=>v.toFixed(1)],
+  ['vibDepth','Vibrato depth',0,0.1,0.005,v=>Math.round(v*100)+'%'],
+  ['vibHz','Vibrato rate',2,10,0.1,v=>v.toFixed(1)+' Hz'],
+  ['rasp','Rasp',0,0.8,0.01,v=>Math.round(v*100)+'%'],
+  ['sub','Chest (sub octave)',0,0.7,0.01,v=>Math.round(v*100)+'%'],
+  ['detune','Thickness (detune)',0,25,1,v=>v+' cents'],
+  ['vol','Volume',0.1,1.5,0.05,v=>Math.round(v*100)+'%']
+];
+const SHAPES={flat:'Flat',fall:'Steady fall',rise:'Steady rise',risefall:'Rise then fall',fallrise:'Dip then recover',stepup:'Two-note up',stepdown:'Two-note down',wobble:'Wobble'};
+function shapeContour(shape,a){
+  switch(shape){
+    case 'rise':return [[0,1-a],[1,1+a]];
+    case 'fall':return [[0,1+a],[1,1-a]];
+    case 'risefall':return [[0,1-a*0.5],[0.35,1+a],[1,1-a]];
+    case 'fallrise':return [[0,1+a*0.5],[0.4,1-a],[1,1+a*0.5]];
+    case 'stepup':return [[0,1],[0.3,1],[0.34,1+a*1.5],[1,1+a]];
+    case 'stepdown':return [[0,1+a],[0.4,1+a],[0.44,1-a*0.5],[1,1-a]];
+    case 'wobble':return [[0,1],[0.2,1+a],[0.4,1-a],[0.6,1+a],[0.8,1-a],[1,1]];
+    default:return [[0,1],[1,1]];
+  }
+}
+function customPreset(){
+  const c=S.custom,F1=250+400*c.open,F2=850+300*c.open,m=1+c.move*0.6;
+  return {name:'CUSTOM',source:'sawtooth',detune:c.detune,sub:c.sub,f0:c.f0,dur:c.dur,vol:c.vol,hum:c.hum,humFreq:c.humFreq,humGain:0.6,
+    contour:shapeContour(c.shape,c.range),
+    formants:[[F1,F1*m,F1*0.9,c.q,1],[F2,F2*m,F2*0.92,c.q*1.2,0.35],[2600,2800,2500,10,0.1]],
+    vib:{hz:c.vibHz,depth:c.vibDepth,from:0.5},rasp:c.rasp>0?{hz:30,depth:c.rasp}:null};
+}
+function mooPreset(){return S.mooIdx>=MOO_PRESETS.length?customPreset():MOO_PRESETS[clamp(S.mooIdx|0,0,MOO_PRESETS.length-1)];}
+function playMoo(){if(S.mooIdx===MOO_REAL){if(!playMooSample())synthMoo(customPreset());}else synthMoo(mooPreset());}
+function spray(vol){
+  if(!AC||muted)return;
+  const t=AC.currentTime,sr=AC.sampleRate,dur=0.55,n=Math.floor(sr*dur);
+  const buf=AC.createBuffer(1,n,sr),d=buf.getChannelData(0);
+  let tv=0;
+  for(let i=0;i<n;i++){
+    const x=i/n;tv+=((Math.random()*2-1)-tv)*0.015;
+    const env=x<0.02?x/0.02:x<0.75?1-x*0.35:Math.max(0,(1-x)/0.25*0.74);
+    d[i]=(Math.random()*2-1)*env*(0.55+0.45*Math.max(-1,Math.min(1,tv*4)));
+  }
+  const src=AC.createBufferSource();src.buffer=buf;
+  const hp=AC.createBiquadFilter();hp.type='highpass';hp.frequency.value=1800;
+  const bp=AC.createBiquadFilter();bp.type='bandpass';bp.Q.value=0.7;bp.frequency.setValueAtTime(5200,t);bp.frequency.exponentialRampToValueAtTime(3600,t+dur);
+  const g=AC.createGain();g.gain.value=vol;
+  src.connect(hp).connect(bp).connect(g).connect(AC.destination);src.start(t);
+  const body=AC.createBufferSource();body.buffer=buf;
+  const bb=AC.createBiquadFilter();bb.type='bandpass';bb.Q.value=1.1;bb.frequency.value=420;
+  const bg=AC.createGain();bg.gain.value=vol*0.5;
+  body.connect(bb).connect(bg).connect(AC.destination);body.start(t);
+  const pn=Math.floor(sr*0.035),pb=AC.createBuffer(1,pn,sr),pd=pb.getChannelData(0);
+  for(let i=0;i<pn;i++)pd[i]=(Math.random()*2-1)*(1-i/pn);
+  const pop=AC.createBufferSource();pop.buffer=pb;
+  const pf=AC.createBiquadFilter();pf.type='bandpass';pf.Q.value=1.5;pf.frequency.value=1300;
+  const pg=AC.createGain();pg.gain.value=vol*1.6;
+  pop.connect(pf).connect(pg).connect(AC.destination);pop.start(t);
+}
+const SFX={
+  throw(){noise(0.25,0.2,2500);},
+  skip(){tone(900,1400,0.08,'sine',0.14);},
+  plunk(){tone(300,110,0.25,'sine',0.2);noise(0.12,0.1,900);},
+  hit(){tone(220,80,0.2,'square',0.14);noise(0.1,0.15,800);},
+  moo(){playMoo();},
+  mooHurt(){playMoo();},
+  mooDown(){playMoo();},
+  spray(){spray(0.6);},
+  splat(){
+    noiseBand(0.22,0.5,1400,250,0.8,0.005);
+    tone(150,45,0.28,'triangle',0.3);
+    noise(0.35,0.25,500);
+    for(let i=0;i<4;i++)setTimeout(()=>tone(rand(700,1500),rand(300,600),0.07,'sine',0.09),120+i*90+Math.random()*60);
+  },
+  pick(){tone(520,760,0.06,'square',0.07);},
+  dodge(){noise(0.15,0.1,4000);},
+  wave(){tone(440,880,0.15,'square',0.1);setTimeout(()=>tone(660,1320,0.2,'square',0.1),150);},
+  over(){tone(320,50,1.3,'sawtooth',0.18);}
+};
+
+/* ---------- rocks ---------- */
+const ROCK_HUES=[[210,6,58],[35,12,60],[205,10,50],[30,10,52],[215,12,44],[40,14,66],[20,10,48],[150,5,55]];
+function makeRock(){
+  const flat=Math.pow(Math.random(),1.35);
+  const size=rand(0.3,1);
+  const thick=1.35-flat;
+  const weight=size*size*thick*2.2;
+  const [h,s,l]=ROCK_HUES[Math.floor(Math.random()*ROCK_HUES.length)];
+  const jag=(1-flat)*0.3, n=16, pts=[];
+  for(let i=0;i<n;i++)pts.push(1+(Math.random()-0.5)*2*jag);
+  const aspect=1+Math.random()*0.55;
+  const spots=[];for(let i=0;i<3;i++)spots.push([rand(-0.5,0.5),rand(-0.5,0.5),rand(0.08,0.2)]);
+  const sizeFac=clamp(1-Math.abs(size-0.58)*1.6,0.25,1);
+  const weightFac=clamp(1-Math.abs(weight-0.7)*0.7,0.25,1);
+  const pot=flat*sizeFac*weightFac;
+  return {flat,size,thick,weight,h,s,l:l+Math.round(rand(-5,5)),pts,aspect,spots,pot,rot:rand(0,TAU)};
+}
+function rockLabel(r){return {circ:Math.round(TAU*(2.5+r.size*5.5)),g:Math.round(r.weight*180),stars:1+Math.round(r.pot*4)};}
+function drawRock(x,y,r,rock,rot){
+  ctx.save();ctx.translate(x,y);ctx.rotate(rot);
+  const rx=r*rock.aspect,ry=r,n=rock.pts.length;
+  ctx.beginPath();
+  for(let i=0;i<=n;i++){
+    const i0=i%n,i1=(i+1)%n,a0=i0/n*TAU,a1=i1/n*TAU;
+    const p0x=Math.cos(a0)*rx*rock.pts[i0],p0y=Math.sin(a0)*ry*rock.pts[i0];
+    const p1x=Math.cos(a1)*rx*rock.pts[i1],p1y=Math.sin(a1)*ry*rock.pts[i1];
+    const mx=(p0x+p1x)/2,my=(p0y+p1y)/2;
+    if(i===0)ctx.moveTo(mx,my);else ctx.quadraticCurveTo(p0x,p0y,mx,my);
+  }
+  ctx.closePath();
+  const dome=1-rock.flat,L=rock.l;
+  const g=ctx.createRadialGradient(-rx*(0.1+0.35*dome),-ry*(0.1+0.4*dome),r*0.1,0,0,r*1.25);
+  g.addColorStop(0,`hsl(${rock.h} ${rock.s}% ${L+10+dome*22}%)`);
+  g.addColorStop(0.55,`hsl(${rock.h} ${rock.s}% ${L}%)`);
+  g.addColorStop(1,`hsl(${rock.h} ${rock.s}% ${Math.max(6,L-8-dome*22)}%)`);
+  ctx.fillStyle=g;ctx.fill();
+  ctx.lineWidth=Math.max(1,r*0.08);ctx.strokeStyle=`hsl(${rock.h} ${rock.s}% ${Math.max(5,L-30)}%)`;ctx.stroke();
+  ctx.save();ctx.clip();
+  ctx.fillStyle=`hsla(${rock.h} ${rock.s}% ${L-15}% / .3)`;
+  for(const sp of rock.spots){ctx.beginPath();ctx.ellipse(sp[0]*rx*0.8,sp[1]*ry*0.8,sp[2]*rx,sp[2]*ry,0,0,TAU);ctx.fill();}
+  ctx.restore();
+  ctx.restore();
+}
+
+/* ---------- beach ---------- */
+function beachRadius(b){const rel=(b.y-beachTop)/(beachBot-beachTop);return b.rock.size*19*(0.7+0.6*rel);}
+function spawnBeachRock(){
+  for(let tries=0;tries<14;tries++){
+    const b={rock:makeRock(),x:rand(W*0.07,W*0.93),y:rand(beachTop+24,beachBot-14),t:0};
+    const r=beachRadius(b);let ok=true;
+    for(const o of S.beach){if(Math.hypot(o.x-b.x,o.y-b.y)<r+beachRadius(o)+6){ok=false;break;}}
+    if(ok){S.beach.push(b);return;}
+  }
+}
+function pickRock(x,y){
+  let best=null,bd=1e9;
+  for(const b of S.beach){const d=Math.hypot(b.x-x,b.y-y)-beachRadius(b);if(d<bd){bd=d;best=b;}}
+  if(!best||bd>12)return;
+  if(S.pocket.length>=POCKET_MAX){msg('POCKET FULL!',best.x,best.y-20,'#ff9f9f',10);return;}
+  S.beach.splice(S.beach.indexOf(best),1);
+  S.pocket.push(best.rock);
+  if(S.pocket.length===1)S.sel=0;
+  SFX.pick();
+  const p=best.rock.pot;
+  const t=p>0.8?'FLAT AS A PANCAKE!':p>0.55?'GOOD SKIPPER':p>0.3?'MEH. IT\'LL DO':'ROUND AS A POTATO';
+  msg(t,clamp(best.x,80,W-80),best.y-22,p>0.55?'#ffe66d':'#dfe8f0',9);
+}
+function slotGeom(){const slotW=Math.min(54,(W-24)/POCKET_MAX-4);const total=slotW*POCKET_MAX+4*(POCKET_MAX-1);return {slotW,x0:(W-total)/2,y:pocketTop+20};}
+function selectSlot(x){const g=slotGeom();const i=Math.floor((x-g.x0)/(g.slotW+4));if(i>=0&&i<S.pocket.length){S.sel=i;SFX.pick();}}
+
+/* ---------- cows & milk ---------- */
+function spawnCow(){
+  const lv=S.level,dir=Math.random()<0.5?1:-1,z=rand(4,12),half=(W/2)*z/F;
+  const spots=[];for(let i=0;i<4;i++)spots.push([rand(-0.6,0.5),rand(-0.3,0.3),rand(0.12,0.24),rand(0.1,0.2)]);
+  const c={x:-dir*(half+1.2),y0:rand(0.2,0.7),y:0,z,dir,vx:dir*(1.0+0.15*(lv-1))*rand(0.85,1.15),
+    hp:1+0.4*(lv-1),spots,fire:rand(2.5,4.5),charge:0,bob:rand(0,TAU),t:0,dead:false,vy:0,rot:0,hitT:0,gone:false};
+  c.maxhp=c.hp;c.y=c.y0;S.cows.push(c);
+}
+function fireBlast(c){
+  const lv=S.level;
+  S.blasts.push({x0:c.x,y0:Math.max(0.1,c.y-0.25),z0:c.z,tx:S.camTarget,t:0,dur:Math.max(1.2,2.5-0.08*(lv-1)),x:c.x,y:c.y,z:c.z,done:false});
+  SFX.spray();
+}
+function milkHit(){
+  const dmg=Math.min(20,8+1*(S.level-1));
+  S.li=Math.min(100,S.li+dmg);S.milkHit=1;S.shake=12;SFX.splat();
+  msg('SPLAT! +'+Math.round(dmg)+'% LACTOSE',W/2,H*0.42,'#fff',12,1.6);
+  if(S.li>=100)gameOver();
+}
+function hitCow(c,r){
+  const dmg=0.6+r.rock.weight*0.8;c.hp-=dmg;c.hitT=0.3;
+  const p=50+15*r.skips+10*(S.level-1);S.score+=p;SFX.hit();if(c.hp>0)SFX.mooHurt();
+  const pr=project(c.x,c.y,c.z);msg('+'+p,pr.sx,pr.sy-30,'#ffe66d',11);
+  r.vz*=-0.15;r.vx*=0.3;r.vy=1.5;r.skipsLeft=0;
+  if(c.hp<=0){c.dead=true;c.vy=1.5;S.kills++;const b=200*S.level;S.score+=b;msg('COW DOWN! +'+b,pr.sx,pr.sy-52,'#ff9fc0',11,1.6);SFX.mooDown();}
+}
+
+/* ---------- throwing & dodging ---------- */
+function throwRock(v,fallbackAngle){
+  if(S.pocket.length===0){msg('POCKET EMPTY! GRAB ROCKS BELOW',W/2,shoreY-40,'#ffd166',10);return;}
+  const rock=S.pocket.splice(S.sel,1)[0];
+  S.sel=clamp(S.sel,0,Math.max(0,S.pocket.length-1));
+  const q=Math.exp(-Math.pow((v-IDEAL_V)/1.1,2));
+  const pw=clamp(v/IDEAL_V,0.35,1.5);
+  const ang=(USE_TILT&&S.tilt.ok?S.aim:fallbackAngle)*Math.PI/180;
+  const sp=6+4*pw;
+  let skipsLeft=Math.round(1+10*rock.pot*q);if(q<0.2)skipsLeft=0;
+  S.rocks.push({rock,x:S.camX,y:0.5,z:1.4,vx:Math.sin(ang)*sp,vz:Math.cos(ang)*sp,vy:1.2+0.6*Math.min(pw,1),skips:0,skipsLeft,rot:0,spin:rand(20,32),done:false,q});
+  SFX.throw();S.lastThrowV=v;
+  let fb,col='#fff';
+  if(v<1.2){fb='TOO GENTLE';col='#9fd3ff';}else if(v>2.9){fb='TOO HARD!';col='#ff9f9f';}else if(q>0.88){fb='PERFECT FLICK!';col='#ffe66d';}else fb='NICE FLICK';
+  msg(fb,W/2,shoreY-64,col,11);
+}
+function dodge(dir){
+  const nt=clamp(Math.round(S.camTarget/LANE+dir)*LANE,-LANE,LANE);
+  if(nt===S.camTarget){msg(dir>0?'CAN\'T STEP FURTHER RIGHT':'CAN\'T STEP FURTHER LEFT',W/2,shoreY-92,'#ffd166',9,0.9);return;}
+  S.camTarget=nt;SFX.dodge();
+}
+function updateDodge(dt){
+  S.camX+=(S.camTarget-S.camX)*Math.min(1,dt*14);
+}
+
+/* ---------- messages & fx ---------- */
+function msg(text,x,y,color,size,life){S.msgs.push({text,x,y,color:color||'#fff',size:size||11,t:0,life:life||1.3});}
+function splash(x,z,size){S.fx.push({x,z,t:0,life:0.6,size});}
+
+/* ---------- update ---------- */
+function updateLevel(){
+  const lv=1+Math.floor(S.kills/5)+Math.floor(S.time/75);
+  if(lv!==S.level){S.level=lv;msg('WAVE '+lv+'!',W/2,H*0.2,'#ffe66d',16,2);SFX.wave();}
+}
+function updateCows(dt,canFire){
+  for(const c of S.cows){
+    c.t+=dt;c.hitT=Math.max(0,c.hitT-dt);
+    if(c.dead){c.vy-=9.8*dt;c.y+=c.vy*dt;c.rot+=c.dir*4*dt;if(c.y<=0){c.gone=true;splash(c.x,c.z,1.6);}continue;}
+    c.x+=c.vx*dt;c.y=c.y0+Math.sin(c.t*2.2+c.bob)*0.15;
+    const half=(W/2)*c.z/F;
+    if(c.x*c.dir>half+2.5)c.gone=true;
+    const onScreen=Math.abs(c.x-S.camX)<half*0.9;
+    if(onScreen&&canFire){
+      c.fire-=dt;c.charge=c.fire<1.0?1-c.fire/1.0:0;
+      if(c.fire<=0){fireBlast(c);c.fire=Math.max(2.0,5.0-0.25*(S.level-1))*rand(0.8,1.25);c.charge=0;}
+    }
+  }
+  S.cows=S.cows.filter(c=>!c.gone);
+  S.spawnT-=dt;
+  const maxC=canFire?Math.min(4,1+Math.floor((S.level-1)/2)):2;
+  if(S.cows.filter(c=>!c.dead).length<maxC&&S.spawnT<=0){spawnCow();S.spawnT=rand(1.2,2.8);}
+}
+function updateBlasts(dt){
+  for(const b of S.blasts){
+    b.t+=dt;const e=Math.min(1,b.t/b.dur),ee=e*e*0.5+e*0.5;
+    b.z=lerp(b.z0,0.5,ee);b.x=lerp(b.x0,b.tx,ee);b.y=lerp(b.y0,EYE_Y,ee);
+    if(e>=1){b.done=true;if(Math.abs(S.camX-b.tx)<0.7)milkHit();else{S.score+=25;msg('DODGED! +25',W/2,shoreY-92,'#bff7d0',10);}}
+  }
+  S.blasts=S.blasts.filter(b=>!b.done);
+}
+function updateRocks(dt){
+  for(const r of S.rocks){
+    if(r.done)continue;
+    r.vy-=ROCK_G*dt;r.x+=r.vx*dt;r.y+=r.vy*dt;r.z+=r.vz*dt;r.rot+=r.spin*dt;
+    if(r.y<=0&&r.vy<0){
+      const p=project(r.x,0,r.z);
+      if(r.skipsLeft>0&&r.z<40){
+        r.skipsLeft--;r.skips++;r.y=0;
+        r.vy=-r.vy*(0.55+0.35*r.rock.flat);if(r.vy<1.2)r.vy=1.2;
+        r.vz*=0.86;r.vx*=0.9;
+        splash(r.x,r.z,0.35+r.rock.size*0.3);S.score+=5;SFX.skip();
+        msg('SKIP x'+r.skips,p.sx,p.sy-14,'#e9fbff',8,0.6);
+      }else{
+        r.done=true;splash(r.x,r.z,0.6+r.rock.size*0.5);SFX.plunk();
+        if(r.skips>0){const b=r.skips*r.skips*5;S.score+=b;msg(r.skips+' SKIPS! +'+b,clamp(p.sx,70,W-70),p.sy-22,'#ffe66d',10);if(r.skips>S.bestChain){S.bestChain=r.skips;if(S.practice)msg('NEW BEST CHAIN!',W/2,H*0.2,'#ffe66d',12,1.6);}}
+      }
+    }
+    if(r.z>45||r.y<-1)r.done=true;
+    if(!r.done)for(const c of S.cows){
+      if(c.dead)continue;
+      if(Math.abs(c.z-r.z)>2.2)continue;
+      const pc=project(c.x,c.y,c.z),pr=project(r.x,r.y,r.z);
+      if(Math.abs(pc.sx-pr.sx)<1.0*pc.s&&Math.abs(pc.sy-pr.sy)<0.75*pc.s){hitCow(c,r);break;}
+    }
+  }
+  S.rocks=S.rocks.filter(r=>!r.done);
+}
+function update(dt){
+  if(S.mode==='pause')return;
+  const play=S.mode==='play';
+  for(const c of clouds){c.x+=c.v*dt;if(c.x>W+120)c.x=-120;}
+  for(const b of S.beach)b.t+=dt;
+  if(play){
+    S.time+=dt;if(!S.practice)updateLevel();updateDodge(dt);updateBlasts(dt);updateRocks(dt);
+    S.beachT-=dt;if(S.beach.length<BEACH_MAX&&S.beachT<=0){spawnBeachRock();S.beachT=2.2;}
+    if(USE_TILT&&S.tilt.ok){
+      if(S.tilt.g0===null)S.tilt.g0=S.tilt.roll;
+      const raw=clamp((S.tilt.roll-S.tilt.g0)*(S.tilt.invert?-1.4:1.4),-45,45);
+      S.aim+=(raw-S.aim)*Math.min(1,dt*10);
+    }
+  }
+  if(!(play&&S.practice))updateCows(dt,play);
+  for(const f of S.fx)f.t+=dt;S.fx=S.fx.filter(f=>f.t<f.life);
+  for(const m of S.msgs)m.t+=dt;S.msgs=S.msgs.filter(m=>m.t<m.life);
+  S.milkHit=Math.max(0,S.milkHit-dt/1.6);S.shake=Math.max(0,S.shake-dt*30);
+}
+
+/* ---------- drawing ---------- */
+function drawBackground(t){
+  const g=ctx.createLinearGradient(0,0,0,horizonY);g.addColorStop(0,'#4f9fdc');g.addColorStop(1,'#d5eefb');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,horizonY+2);
+  const sunX=W*0.76-S.camX*3,sunY=horizonY*0.42;
+  const sg=ctx.createRadialGradient(sunX,sunY,4,sunX,sunY,horizonY*0.9);sg.addColorStop(0,'rgba(255,244,194,.9)');sg.addColorStop(0.25,'rgba(255,244,194,.35)');sg.addColorStop(1,'rgba(255,244,194,0)');
+  ctx.fillStyle=sg;ctx.fillRect(0,0,W,horizonY);
+  ctx.fillStyle='#fff6c8';ctx.beginPath();ctx.arc(sunX,sunY,Math.max(10,horizonY*0.09),0,TAU);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.92)';
+  for(const c of clouds){const x=c.x-S.camX*6,y=c.y,w=c.w;ctx.beginPath();ctx.arc(x,y,w*0.28,0,TAU);ctx.arc(x+w*0.3,y-w*0.12,w*0.34,0,TAU);ctx.arc(x+w*0.62,y,w*0.26,0,TAU);ctx.arc(x+w*0.3,y+w*0.1,w*0.3,0,TAU);ctx.fill();}
+  const hs=-S.camX*F/120;
+  ctx.fillStyle='#9dbccb';ctx.beginPath();ctx.moveTo(-10,horizonY);
+  for(let x=-120;x<=W+120;x+=24){const xx=x+hs;ctx.lineTo(x,horizonY-26-22*Math.sin(xx*0.011+1.3)-13*Math.sin(xx*0.027));}
+  ctx.lineTo(W+10,horizonY);ctx.closePath();ctx.fill();
+  for(const tr of trees){
+    const x=tr.x-S.camX*F/tr.z;if(x<-20||x>W+20)continue;
+    ctx.fillStyle=tr.c;ctx.beginPath();ctx.moveTo(x,horizonY-tr.h);ctx.lineTo(x+tr.w,horizonY+1);ctx.lineTo(x-tr.w,horizonY+1);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(x,horizonY-tr.h-tr.h*0.15);ctx.lineTo(x+tr.w*0.65,horizonY-tr.h*0.45);ctx.lineTo(x-tr.w*0.65,horizonY-tr.h*0.45);ctx.closePath();ctx.fill();
+  }
+  ctx.fillStyle='#24452f';ctx.fillRect(0,horizonY-2,W,4);
+}
+function drawLake(t){
+  const lg=ctx.createLinearGradient(0,horizonY,0,shoreY);lg.addColorStop(0,'#8ec9de');lg.addColorStop(0.35,'#4aa0c4');lg.addColorStop(1,'#2a6f93');
+  ctx.fillStyle=lg;ctx.fillRect(0,horizonY,W,shoreY-horizonY);
+  const rg=ctx.createLinearGradient(0,horizonY,0,horizonY+(shoreY-horizonY)*0.28);rg.addColorStop(0,'rgba(36,69,47,.45)');rg.addColorStop(1,'rgba(36,69,47,0)');
+  ctx.fillStyle=rg;ctx.fillRect(0,horizonY,W,(shoreY-horizonY)*0.28);
+  ctx.lineWidth=1;
+  for(const w of waves){
+    const p=project(w.x+Math.sin(t*0.4+w.ph)*0.3,0,w.z);if(p.sx<-40||p.sx>W+40)continue;
+    ctx.strokeStyle=`rgba(255,255,255,${0.16+0.12*Math.sin(t*2+w.ph)})`;
+    ctx.beginPath();ctx.moveTo(p.sx-w.len*p.s/2,p.sy);ctx.lineTo(p.sx+w.len*p.s/2,p.sy);ctx.stroke();
+  }
+}
+function drawCow(c){
+  const p=project(c.x,c.y,c.z),s=p.s;if(s<2||p.sx<-s*2||p.sx>W+s*2)return;
+  const sh=project(c.x,0,c.z);ctx.fillStyle='rgba(0,0,0,.16)';ctx.beginPath();ctx.ellipse(sh.sx,sh.sy,0.8*sh.s,0.2*sh.s,0,0,TAU);ctx.fill();
+  ctx.save();ctx.translate(p.sx,p.sy);ctx.rotate(c.rot);ctx.scale(c.dir,1);
+  ctx.lineWidth=Math.max(1,s*0.05);ctx.strokeStyle='#1d2229';ctx.lineJoin='round';ctx.lineCap='round';
+  const flap=Math.sin(c.t*16)*0.55;
+  const wing=(ang,fill)=>{ctx.save();ctx.translate(-0.05*s,-0.3*s);ctx.rotate(ang);ctx.beginPath();ctx.ellipse(0.4*s,0,0.46*s,0.15*s,0,0,TAU);ctx.fillStyle=fill;ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(0.25*s,0.05*s);ctx.lineTo(0.55*s,-0.05*s);ctx.moveTo(0.35*s,0.12*s);ctx.lineTo(0.7*s,0);ctx.stroke();ctx.restore();};
+  wing(-1.35+flap,'#e3e6ea');
+  for(let i=0;i<4;i++){const lx=(-0.55+i*0.35)*s,sw=Math.sin(c.t*6+i)*0.12;ctx.save();ctx.translate(lx,0.35*s);ctx.rotate(sw);ctx.fillStyle='#fff';ctx.fillRect(-0.06*s,0,0.12*s,0.38*s);ctx.strokeRect(-0.06*s,0,0.12*s,0.38*s);ctx.fillStyle='#1d2229';ctx.fillRect(-0.07*s,0.32*s,0.14*s,0.1*s);ctx.restore();}
+  ctx.beginPath();ctx.moveTo(-0.78*s,-0.1*s);ctx.quadraticCurveTo(-1.05*s,-0.05*s,-1.0*s,0.2*s);ctx.stroke();ctx.fillStyle='#1d2229';ctx.beginPath();ctx.arc(-1.0*s,0.22*s,0.07*s,0,TAU);ctx.fill();
+  ctx.beginPath();ctx.ellipse(0,0,0.8*s,0.45*s,0,0,TAU);ctx.fillStyle='#fff';ctx.fill();ctx.stroke();
+  ctx.save();ctx.clip();ctx.fillStyle='#2a2a2a';for(const sp of c.spots){ctx.beginPath();ctx.ellipse(sp[0]*s,sp[1]*s,sp[2]*s,sp[3]*s,0,0,TAU);ctx.fill();}ctx.restore();
+  const ud=1+0.35*c.charge;
+  if(c.charge>0){ctx.globalAlpha=c.charge*0.7;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-0.15*s,0.45*s,0.45*s*ud,0,TAU);ctx.fill();ctx.globalAlpha=1;}
+  ctx.beginPath();ctx.ellipse(-0.15*s,0.42*s,0.28*s*ud,0.2*s*ud,0,0,TAU);ctx.fillStyle='#f7a8bf';ctx.fill();ctx.stroke();
+  ctx.fillStyle='#f28ca8';for(let i=-1;i<=1;i++){ctx.fillRect((-0.15+i*0.13)*s-0.035*s,0.55*s*ud,0.07*s,0.12*s);}
+  ctx.beginPath();ctx.arc(0.72*s,-0.22*s,0.3*s,0,TAU);ctx.fillStyle='#fff';ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.ellipse(0.5*s,-0.4*s,0.14*s,0.07*s,-0.5,0,TAU);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#e8d8a0';ctx.beginPath();ctx.moveTo(0.62*s,-0.48*s);ctx.lineTo(0.66*s,-0.7*s);ctx.lineTo(0.76*s,-0.5*s);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.ellipse(0.92*s,-0.1*s,0.22*s,0.15*s,0,0,TAU);ctx.fillStyle='#f4b6c7';ctx.fill();ctx.stroke();
+  ctx.fillStyle='#1d2229';ctx.beginPath();ctx.arc(0.88*s,-0.12*s,0.03*s,0,TAU);ctx.arc(1.0*s,-0.12*s,0.03*s,0,TAU);ctx.fill();
+  if(c.dead){ctx.beginPath();ctx.moveTo(0.68*s,-0.36*s);ctx.lineTo(0.8*s,-0.24*s);ctx.moveTo(0.8*s,-0.36*s);ctx.lineTo(0.68*s,-0.24*s);ctx.stroke();}
+  else{ctx.beginPath();ctx.arc(0.74*s,-0.3*s,0.045*s,0,TAU);ctx.fill();}
+  wing(-1.0+flap,'#fff');
+  if(c.hitT>0){ctx.fillStyle='rgba(255,70,70,.5)';ctx.beginPath();ctx.ellipse(0,0,0.9*s,0.55*s,0,0,TAU);ctx.fill();}
+  ctx.restore();
+  if(!c.dead&&c.hp<c.maxhp){const bw=1.4*s,bh=Math.max(3,s*0.08);ctx.fillStyle='#000';ctx.fillRect(p.sx-bw/2,p.sy-0.95*s,bw,bh);ctx.fillStyle='#7ff08a';ctx.fillRect(p.sx-bw/2,p.sy-0.95*s,bw*clamp(c.hp/c.maxhp,0,1),bh);}
+}
+function drawBlast(b){
+  const p=project(b.x,b.y,b.z),rad=clamp(0.28*p.s,3,W*0.9);
+  for(let i=3;i>=1;i--){const e=Math.max(0,b.t/b.dur-i*0.04);const ee=e*e*0.5+e*0.5;const q=project(lerp(b.x0,b.tx,ee),lerp(b.y0,EYE_Y,ee),lerp(b.z0,0.5,ee));ctx.fillStyle=`rgba(255,255,255,${0.45-i*0.1})`;ctx.beginPath();ctx.arc(q.sx,q.sy,clamp(0.28*q.s,2,W)*(0.7-i*0.12),0,TAU);ctx.fill();}
+  ctx.fillStyle='rgba(200,230,255,.55)';ctx.beginPath();ctx.arc(p.sx,p.sy,rad*1.25,0,TAU);ctx.fill();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(p.sx,p.sy,rad,0,TAU);ctx.fill();
+  ctx.fillStyle='rgba(180,215,240,.6)';ctx.beginPath();ctx.arc(p.sx+rad*0.3,p.sy+rad*0.3,rad*0.35,0,TAU);ctx.fill();
+}
+function drawFlyingRock(r){
+  const p=project(r.x,r.y,r.z),rp=(0.06+0.12*r.rock.size)*p.s;if(rp<0.6)return;
+  if(r.y>0){const sh=project(r.x,0,r.z);ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(sh.sx,sh.sy,rp,rp*0.35,0,0,TAU);ctx.fill();}
+  drawRock(p.sx,p.sy,rp,r.rock,r.rot);
+}
+function drawSplash(f){
+  const p=project(f.x,0,f.z),k=f.t/f.life,rx=f.size*p.s*(0.3+0.9*k);
+  ctx.strokeStyle=`rgba(255,255,255,${(1-k)*0.9})`;ctx.lineWidth=Math.max(1,p.s*0.03);
+  ctx.beginPath();ctx.ellipse(p.sx,p.sy,rx,rx*0.35,0,0,TAU);ctx.stroke();
+  ctx.fillStyle=`rgba(255,255,255,${(1-k)*0.9})`;
+  for(let i=0;i<4;i++){const a=i/4*TAU+f.x;const h=f.size*0.9*Math.sin(Math.min(1,k*1.2)*Math.PI);const q=project(f.x+Math.cos(a)*f.size*0.4*k,h,f.z);ctx.beginPath();ctx.arc(q.sx,q.sy,Math.max(1,p.s*0.03*f.size),0,TAU);ctx.fill();}
+}
+function drawWorld(t){
+  const items=[];
+  for(const c of S.cows)items.push({z:c.z,d:()=>drawCow(c)});
+  for(const b of S.blasts)items.push({z:b.z,d:()=>drawBlast(b)});
+  for(const r of S.rocks)items.push({z:r.z,d:()=>drawFlyingRock(r)});
+  for(const f of S.fx)items.push({z:f.z,d:()=>drawSplash(f)});
+  items.sort((a,b)=>b.z-a.z);
+  ctx.save();ctx.beginPath();ctx.rect(0,horizonY-40,W,shoreY-horizonY+60);ctx.clip();
+  for(const it of items)it.d();
+  ctx.restore();
+}
+function drawHeldRock(t){
+  if(S.mode!=='play'||!S.pocket.length)return;
+  const hp=heldRockPos(),zr=throwZoneR();
+  ctx.setLineDash([4,7]);ctx.lineDashOffset=-t*20;ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(hp.x,hp.y,zr,0,TAU);ctx.stroke();ctx.setLineDash([]);
+  if(ptr&&ptr.aim!==undefined){
+    const a=ptr.aim*Math.PI/180;
+    ctx.setLineDash([6,8]);ctx.lineDashOffset=-t*40;ctx.strokeStyle='rgba(255,230,109,.75)';ctx.lineWidth=2;ctx.beginPath();
+    ctx.moveTo(hp.x,hp.y);
+    for(let d=1;d<=24;d+=2){const q=project(S.camX+Math.sin(a)*d,0,1.4+Math.cos(a)*d);ctx.lineTo(q.sx,q.sy);}
+    ctx.stroke();ctx.setLineDash([]);
+  }
+  const rock=S.pocket[S.sel],rr=16+rock.size*12;
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(hp.x+3,hp.y+rr*0.6,rr*rock.aspect*0.9,rr*0.45,0,0,TAU);ctx.fill();
+  drawRock(hp.x,hp.y+Math.sin(t*3)*2,rr,rock,rock.rot+Math.sin(t)*0.1);
+  if(S.time<12){ctx.fillStyle='rgba(255,255,255,.85)';ctx.font=`8px ${PIX}`;ctx.textAlign='center';ctx.fillText('FLICK FROM HERE',hp.x,hp.y-zr-8);}
+}
+function drawBeach(t){
+  ctx.fillStyle='#b8a27c';ctx.fillRect(0,shoreY-2,W,14);
+  ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=2;ctx.beginPath();
+  for(let x=0;x<=W;x+=8){const y=shoreY+Math.sin(x*0.05+t*2)*2+Math.sin(x*0.013-t)*2;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}
+  ctx.stroke();
+  const sg=ctx.createLinearGradient(0,beachTop+10,0,beachBot);sg.addColorStop(0,'#d6bf94');sg.addColorStop(1,'#c7ab7b');
+  ctx.fillStyle=sg;ctx.fillRect(0,shoreY+12,W,beachBot-shoreY-12);
+  for(const sp of speckles){ctx.fillStyle=sp.d?'rgba(90,70,40,.18)':'rgba(255,255,255,.3)';ctx.fillRect(sp.x,sp.y,sp.r,sp.r);}
+  const list=S.beach.slice().sort((a,b)=>a.y-b.y);
+  for(const b of list){
+    const k=Math.min(1,b.t*4),r=beachRadius(b)*(1-Math.pow(1-k,2));if(r<0.5)continue;
+    ctx.fillStyle='rgba(60,40,20,.25)';ctx.beginPath();ctx.ellipse(b.x+2,b.y+r*0.35,r*b.rock.aspect*0.95,r*0.7,0,0,TAU);ctx.fill();
+    drawRock(b.x,b.y,r,b.rock,b.rock.rot);
+  }
+}
+function drawPocket(){
+  ctx.fillStyle='#3a5a8a';ctx.fillRect(0,pocketTop,W,H-pocketTop);
+  ctx.strokeStyle='#e9c46a';ctx.lineWidth=2;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(6,pocketTop+6);ctx.lineTo(W-6,pocketTop+6);ctx.moveTo(6,pocketTop+11);ctx.lineTo(W-6,pocketTop+11);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#c9a24a';ctx.beginPath();ctx.arc(9,pocketTop+9,3,0,TAU);ctx.arc(W-9,pocketTop+9,3,0,TAU);ctx.fill();
+  const g=slotGeom();
+  for(let i=0;i<POCKET_MAX;i++){
+    const x=g.x0+i*(g.slotW+4),y=g.y,rock=S.pocket[i];
+    ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.roundRect(x,y,g.slotW,g.slotW,6);ctx.fill();
+    ctx.lineWidth=2;ctx.strokeStyle=rock&&i===S.sel?'#ffe66d':'rgba(255,255,255,.18)';ctx.stroke();
+    if(rock){const r=g.slotW*0.15*(0.8+rock.size)/Math.sqrt(rock.aspect);drawRock(x+g.slotW/2,y+g.slotW/2,r,rock,rock.rot);}
+  }
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  const ty=g.y+g.slotW+((H-(g.y+g.slotW))/2);
+  const rock=S.pocket[S.sel];
+  if(rock){const L=rockLabel(rock);ctx.font=`8px ${PIX}`;ctx.fillStyle='#fff';ctx.fillText('★'.repeat(L.stars)+'☆'.repeat(5-L.stars)+'  FLAT '+Math.round(rock.flat*100)+'%  '+L.circ+'CM  '+L.g+'G',W/2,ty);}
+  else{ctx.font=`7px ${PIX}`;ctx.fillStyle='#cfe0ff';ctx.fillText(S.pocket.length?'':'TAP BEACH ROCKS TO FILL YOUR POCKET',W/2,ty);}
+  ctx.textBaseline='alphabetic';
+}
+function drawHUD(){
+  ctx.fillStyle='rgba(10,18,28,.55)';ctx.fillRect(0,0,W,HUD_H);
+  ctx.font=`10px ${PIX}`;ctx.fillStyle='#fff';ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText('SCORE '+String(S.score).padStart(6,'0'),12,20);
+  ctx.textAlign='center';ctx.fillStyle='#ffe66d';ctx.fillText(S.practice?'PRACTICE':'WAVE '+S.level,W/2,20);
+  if(S.practice){
+    ctx.textAlign='right';ctx.fillStyle='#fff';ctx.fillText('BEST '+S.bestChain,W-12,20);
+    ctx.font=`7px ${PIX}`;ctx.fillStyle='#9fd3ff';ctx.fillText('SKIP CHAIN',W-12,42);
+  }else{
+    const bw=Math.min(120,W*0.3),bx=W-bw-12,by=12;
+    ctx.fillStyle='#000';ctx.fillRect(bx-2,by-2,bw+4,18);
+    const bg=ctx.createLinearGradient(bx,0,bx+bw,0);bg.addColorStop(0,'#f28ca8');bg.addColorStop(1,'#fff');
+    ctx.fillStyle=bg;ctx.fillRect(bx,by,bw*S.li/100,14);
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(bx-1,by-1,bw+2,16);
+    ctx.font=`7px ${PIX}`;ctx.fillStyle='#fff';ctx.textAlign='right';ctx.fillText('LACTOSE '+Math.round(S.li)+'%',W-12,42);
+  }
+  ctx.font=`7px ${PIX}`;
+  if(S.mode==='play'||S.mode==='pause'){
+    ctx.fillStyle='#fff8f0';ctx.beginPath();ctx.roundRect(12,36,58,20,4);ctx.fill();
+    ctx.fillStyle='#1d2229';ctx.textAlign='center';ctx.fillText(S.mode==='pause'?'PLAY':'PAUSE',41,47);
+  }
+  if(S.time<12&&!S.practice){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText('SWIPE < > OUTSIDE THE RING TO STEP',W/2,49);}
+  ctx.textBaseline='alphabetic';
+}
+const DRIPS=[[0.06,26,0.9],[0.2,18,0.5],[0.33,34,1.1],[0.5,22,0.7],[0.64,30,1.0],[0.8,20,0.6],[0.93,28,0.8]];
+function drawMilk(){
+  if(S.milkHit<=0)return;const a=S.milkHit;
+  ctx.fillStyle=`rgba(255,255,255,${a*0.92})`;
+  ctx.fillRect(0,0,W,24);
+  for(const d of DRIPS){const x=d[0]*W,w=d[1],len=20+(1-a)*H*0.45*d[2];ctx.beginPath();ctx.moveTo(x-w/2,0);ctx.lineTo(x+w/2,0);ctx.lineTo(x+w/2,len);ctx.arc(x,len,w/2,0,Math.PI);ctx.closePath();ctx.fill();}
+  const vg=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.7);vg.addColorStop(0,'rgba(255,255,255,0)');vg.addColorStop(1,`rgba(255,255,255,${a*0.6})`);ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+}
+function drawMsgs(){
+  ctx.textAlign='center';ctx.lineJoin='round';
+  for(const m of S.msgs){
+    const k=m.t/m.life;ctx.globalAlpha=k>0.7?1-(k-0.7)/0.3:1;
+    ctx.font=`${m.size}px ${PIX}`;ctx.lineWidth=3;ctx.strokeStyle='#000';const y=m.y-m.t*22;
+    ctx.strokeText(m.text,m.x,y);ctx.fillStyle=m.color;ctx.fillText(m.text,m.x,y);
+  }
+  ctx.globalAlpha=1;
+}
+function draw(t){
+  ctx.save();
+  if(S.shake>0)ctx.translate(rand(-S.shake,S.shake)*0.5,rand(-S.shake,S.shake)*0.5);
+  drawBackground(t);drawLake(t);drawWorld(t);drawBeach(t);drawHeldRock(t);drawPocket();
+  ctx.restore();
+  drawHUD();drawMilk();drawMsgs();
+}
+
+/* ---------- input ---------- */
+let ptr=null;
+function localPos(e){const r=canvas.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
+canvas.addEventListener('pointerdown',e=>{
+  if(S.mode!=='play'||ptr)return;const p=localPos(e),t=performance.now();
+  ptr={id:e.pointerId,x0:p.x,y0:p.y,t0:t,hist:[{x:p.x,y:p.y,t}]};
+  try{canvas.setPointerCapture(e.pointerId);}catch(_){}
+  e.preventDefault();
+});
+canvas.addEventListener('pointermove',e=>{
+  if(!ptr||e.pointerId!==ptr.id)return;const p=localPos(e);
+  ptr.hist.push({x:p.x,y:p.y,t:performance.now()});if(ptr.hist.length>40)ptr.hist.shift();
+  const dx=p.x-ptr.x0,dy=p.y-ptr.y0,hp=heldRockPos();
+  if(Math.hypot(dx,dy)>16&&Math.hypot(ptr.x0-hp.x,ptr.y0-hp.y)<throwZoneR())ptr.aim=clamp(Math.atan2(dx,-dy)*180/Math.PI,-AIM_MAX,AIM_MAX);else delete ptr.aim;
+});
+function endPtr(e){
+  if(!ptr||e.pointerId!==ptr.id)return;
+  const p=localPos(e),t=performance.now();ptr.hist.push({x:p.x,y:p.y,t});
+  const dx=p.x-ptr.x0,dy=p.y-ptr.y0,dist=Math.hypot(dx,dy);
+  const hp=heldRockPos(),inZone=Math.hypot(ptr.x0-hp.x,ptr.y0-hp.y)<throwZoneR();
+  if(dist<20){
+    if(ptr.y0<HUD_H){if(ptr.x0<80&&ptr.y0>30)pauseGame();}
+    else if(ptr.y0>=beachBot)selectSlot(ptr.x0);
+    else if(ptr.y0>=shoreY+8)pickRock(ptr.x0,ptr.y0);
+    else if(ptr.y0>=HUD_H){if(S.pocket.length)msg('SWIPE UP FROM THE ROCK TO THROW',W/2,shoreY-110,'#fff',9);else msg('POCKET EMPTY! GRAB ROCKS BELOW',W/2,shoreY-110,'#ffd166',10);}
+  }
+  else if(inZone){
+    const h=ptr.hist,last=h[h.length-1];let j=h.length-1;while(j>0&&last.t-h[j-1].t<120)j--;
+    const a=h[j],vWin=Math.hypot(last.x-a.x,last.y-a.y)/Math.max(16,last.t-a.t);
+    const vAll=dist/Math.max(16,t-ptr.t0);
+    throwRock(Math.max(vWin,vAll),clamp(Math.atan2(dx,-dy)*180/Math.PI,-AIM_MAX,AIM_MAX));
+  }
+  else if(Math.abs(dx)>Math.abs(dy)){dodge(Math.sign(dx));}
+  else if(dy<0){
+    if(ptr.y0>=shoreY+8)pickRock(ptr.x0,ptr.y0);
+    else msg('START YOUR FLICK ON THE ROCK',W/2,shoreY-110,'#ffd166',9);
+  }
+  ptr=null;
+}
+canvas.addEventListener('pointerup',endPtr);
+canvas.addEventListener('pointercancel',()=>{ptr=null;});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+/* ---------- tilt ---------- */
+function onTilt(e){
+  if(e.gamma==null||e.beta==null)return;
+  const b=e.beta*Math.PI/180,g=e.gamma*Math.PI/180;
+  const roll=Math.atan2(Math.cos(b)*Math.sin(g),Math.sin(b))*180/Math.PI;
+  if(!isFinite(roll))return;
+  S.tilt.roll=roll;S.tilt.ok=true;
+}
+async function requestTilt(){
+  if(S.tilt.listening)return;
+  try{
+    if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
+      const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted')return;
+    }
+  }catch(e){return;}
+  if(typeof DeviceOrientationEvent==='undefined')return;
+  window.addEventListener('deviceorientation',onTilt);S.tilt.listening=true;
+}
+
+/* ---------- game flow ---------- */
+function resetGame(){
+  S.score=0;S.li=0;S.level=1;S.kills=0;S.time=0;S.camX=0;S.camTarget=0;S.dodge={dir:0,t:0};
+  S.pocket=[];S.sel=0;S.beach=[];S.cows=[];S.blasts=[];S.rocks=[];S.fx=[];S.msgs=[];
+  S.shake=0;S.milkHit=0;S.spawnT=1;S.beachT=2;S.tilt.g0=null;S.aim=0;S.bestChain=0;
+  for(let i=0;i<11;i++)spawnBeachRock();
+}
+function show(id){for(const o of ['title','over','board','pause','lab'])$(o).hidden=o!==id;}
+function labAudio(){audioInit();if(AC&&AC.resume)AC.resume();muted=$('muteBox').checked;}
+function saveCustom(){try{localStorage.setItem(LS_CUSTOM,JSON.stringify(S.custom));}catch(e){}}
+function renderLab(){
+  const el=$('labList');el.innerHTML='';
+  const rows=[{i:MOO_REAL,name:'REAL COW',desc:'A recorded cow. The default. "Single Cow Moo" by MichaeltheFox8621, CC BY-SA 4.0.',play:()=>{if(!playMooSample())setTimeout(playMooSample,300);}}];
+  MOO_PRESETS.forEach((pr,i)=>rows.push({i,name:pr.name,desc:pr.desc,play:()=>synthMoo(pr)}));
+  rows.push({i:MOO_PRESETS.length,name:'CUSTOM',desc:'Your synthesized mix from the knobs below.',play:()=>synthMoo(customPreset())});
+  rows.forEach((r,k)=>{
+    const li=document.createElement('li');li.className=r.i===S.mooIdx?'sel':'';
+    li.innerHTML=`<div><div class="nm">${k+1}. ${r.name}</div><div class="ds">${r.desc}</div></div><button class="btn" type="button">Play</button>`;
+    li.querySelector('button').addEventListener('click',e=>{e.stopPropagation();labAudio();r.play();});
+    li.addEventListener('click',()=>{S.mooIdx=r.i;try{localStorage.setItem(LS_MOO,String(r.i));}catch(e){}renderLab();labAudio();r.play();});
+    el.appendChild(li);
+  });
+}
+function renderKnobs(){
+  const el=$('knobs');el.innerHTML='';
+  for(const [key,label,min,max,step,fmt] of KNOBS){
+    const d=document.createElement('div');d.className='knob';
+    if(key==='shape'){
+      d.innerHTML=`<label for="knob_shape">${label}</label><span class="v"></span><select id="knob_shape">${Object.entries(SHAPES).map(([k,v])=>`<option value="${k}"${S.custom.shape===k?' selected':''}>${v}</option>`).join('')}</select>`;
+      d.querySelector('select').addEventListener('change',e=>{S.custom.shape=e.target.value;saveCustom();});
+    }else{
+      d.innerHTML=`<label for="knob_${key}">${label}</label><span class="v" id="knobv_${key}">${fmt(S.custom[key])}</span><input type="range" id="knob_${key}" min="${min}" max="${max}" step="${step}" value="${S.custom[key]}">`;
+      d.querySelector('input').addEventListener('input',e=>{S.custom[key]=parseFloat(e.target.value);$('knobv_'+key).textContent=fmt(S.custom[key]);saveCustom();});
+    }
+    el.appendChild(d);
+  }
+}
+$('labBtn').addEventListener('click',()=>{renderLab();renderKnobs();show('lab');});
+$('labCustomBtn').addEventListener('click',()=>{labAudio();synthMoo(customPreset());});
+$('labResetBtn').addEventListener('click',()=>{S.custom=Object.assign({},CUSTOM_DEF);saveCustom();renderKnobs();});
+try{const c=JSON.parse(localStorage.getItem(LS_CUSTOM));S.custom=Object.assign({},CUSTOM_DEF,c&&typeof c==='object'?c:{});}catch(e){S.custom=Object.assign({},CUSTOM_DEF);}
+if(!S.custom)S.custom=Object.assign({},CUSTOM_DEF);
+$('labBackBtn').addEventListener('click',()=>show('title'));
+try{const m=parseInt(localStorage.getItem(LS_MOO));if(!isNaN(m))S.mooIdx=clamp(m,0,MOO_REAL);}catch(e){}
+async function startGame(practice){
+  audioInit();if(AC&&AC.resume)AC.resume();
+  muted=$('muteBox').checked;$('muteBox2').checked=muted;S.tilt.invert=$('invertTilt').checked;
+  if(USE_TILT)await requestTilt();
+  S.practice=!!practice;
+  resetGame();S.mode='play';show(null);
+  msg(S.practice?'PRACTICE: JUST YOU AND THE LAKE':'GRAB SOME ROCKS!',W/2,H*0.2,'#ffe66d',S.practice?10:12,2);
+}
+function pauseGame(){
+  if(S.mode!=='play')return;
+  S.mode='pause';ptr=null;
+  $('pauseEyebrow').textContent=S.practice?'Practice paused':'Take a breather';
+  $('pauseScore').textContent=S.score;
+  $('pauseWave').textContent=S.practice?S.bestChain:S.level;
+  $('pauseWaveLabel').textContent=S.practice?'Best chain':'Wave';
+  $('pauseLi').textContent=S.practice?'n/a':Math.round(S.li)+'%';
+  show('pause');
+}
+function resumeGame(){if(S.mode!=='pause')return;S.mode='play';show(null);last=performance.now();}
+function quitToTitle(){S.mode='title';S.practice=false;resetGame();show('title');}
+function gameOver(){
+  S.mode='over';SFX.over();
+  $('finalScore').textContent=S.score;$('finalWave').textContent=S.level;$('finalKills').textContent=S.kills;
+  $('entry').hidden=false;$('overBoardWrap').hidden=true;$('saveBtn').disabled=false;
+  try{$('nameInput').value=localStorage.getItem(LS_NAME)||'';}catch(e){}
+  show('over');
+}
+function renderBoard(el,highlight){
+  const list=loadScores();el.innerHTML='';
+  list.forEach((s,i)=>{
+    const li=document.createElement('li');if(highlight&&s.id===highlight)li.className='me';
+    li.innerHTML=`<span class="r">${i+1}.</span><span class="n">${escapeHtml(s.name)} <span class="w">W${s.wave}</span></span><span>${s.score}</span>`;
+    el.appendChild(li);
+  });
+  return list.length;
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function saveScore(){
+  const name=($('nameInput').value.trim().toUpperCase()||'ANON').slice(0,12);
+  try{localStorage.setItem(LS_NAME,name);}catch(e){}
+  const list=loadScores();const id=Date.now()+'-'+Math.random().toString(36).slice(2,6);
+  list.push({id,name,score:S.score,wave:S.level,kills:S.kills,date:new Date().toISOString()});
+  list.sort((a,b)=>b.score-a.score);saveScores(list.slice(0,10));
+  $('entry').hidden=true;$('overBoardWrap').hidden=false;renderBoard($('overBoard'),id);
+}
+$('startBtn').addEventListener('click',()=>startGame(false));
+$('practiceBtn').addEventListener('click',()=>startGame(true));
+$('againBtn').addEventListener('click',()=>startGame(false));
+$('homeBtn').addEventListener('click',quitToTitle);
+$('resumeBtn').addEventListener('click',resumeGame);
+$('restartBtn').addEventListener('click',()=>startGame(S.practice));
+$('quitBtn').addEventListener('click',quitToTitle);
+$('muteBox2').addEventListener('change',e=>{muted=e.target.checked;$('muteBox').checked=muted;});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='p'||e.key==='P'){if(S.mode==='play')pauseGame();else if(S.mode==='pause')resumeGame();}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&S.mode==='play')pauseGame();});
+$('boardBtn').addEventListener('click',()=>{const n=renderBoard($('boardList'));$('boardEmpty').hidden=n>0;show('board');});
+$('backBtn').addEventListener('click',()=>show('title'));
+$('saveBtn').addEventListener('click',()=>{$('saveBtn').disabled=true;saveScore();});
+$('skipSaveBtn').addEventListener('click',()=>{$('entry').hidden=true;$('overBoardWrap').hidden=false;renderBoard($('overBoard'));});
+$('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('saveBtn').click();}});
+$('muteBox').addEventListener('change',e=>{muted=e.target.checked;});
+$('invertTilt').addEventListener('change',e=>{S.tilt.invert=e.target.checked;});
+
+/* ---------- loop ---------- */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  update(dt);draw(now/1000);
+  requestAnimationFrame(frame);
+}
+window.addEventListener('resize',resize);
+if(document.fonts&&document.fonts.load){document.fonts.load('10px "Press Start 2P"').catch(()=>{});}
+resize();resetGame();requestAnimationFrame(frame);
+</script>
+</body>
+</html>
