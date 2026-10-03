@@ -6,7 +6,7 @@ let AC = null;
 let mooBuf = null;
 let mooLoading = false;
 let ambient = null;
-export const audio = { muted: false, haptics: true };
+export const audio = { muted: false, haptics: true, music: true };
 
 export function audioInit() {
   if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
@@ -112,6 +112,56 @@ export function startAmbient() {
   setAmbient(!audio.muted);
 }
 export function setAmbient(on) { if (ambient && AC) ambient.g.gain.setTargetAtTime(on ? ambient.base : 0, AC.currentTime, 0.3); }
+
+/* ---------- generative music: slow pads with a pentatonic marimba, all synthesized ---------- */
+let music = null;
+const NOTE = (n) => 440 * Math.pow(2, (n - 69) / 12);
+const CHORDS = [[48, 52, 55, 59], [45, 48, 52, 55], [41, 45, 48, 52], [43, 47, 50, 53]]; // Cmaj7 Am7 Fmaj7 G7-ish
+const PENTA = [72, 74, 76, 79, 81, 84, 86];
+export function startMusic() {
+  if (!AC || music) return;
+  const master = AC.createGain(); master.gain.value = 0; master.connect(AC.destination);
+  const delay = AC.createDelay(1.5); delay.delayTime.value = 60 / 92 * 0.75;
+  const fb = AC.createGain(); fb.gain.value = 0.38; const dlp = AC.createBiquadFilter(); dlp.type = 'lowpass'; dlp.frequency.value = 2200;
+  delay.connect(dlp).connect(fb).connect(delay);
+  const wet = AC.createGain(); wet.gain.value = 0.4; delay.connect(wet).connect(master);
+  const bus = AC.createGain(); bus.connect(master); bus.connect(delay);
+  music = { master, bus, next: AC.currentTime + 0.2, step: 0, bar: 0, base: 0.22, timer: null, melodyNote: 3 };
+  music.timer = setInterval(scheduleMusic, 60);
+  setMusic(audio.music && !audio.muted);
+}
+function pluck(t, midi, vol, dur = 0.5) {
+  const o = AC.createOscillator(), g = AC.createGain(), f = AC.createBiquadFilter();
+  o.type = 'triangle'; o.frequency.value = NOTE(midi);
+  f.type = 'lowpass'; f.frequency.setValueAtTime(3200, t); f.frequency.exponentialRampToValueAtTime(900, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(f).connect(g).connect(music.bus); o.start(t); o.stop(t + dur + 0.05);
+}
+function pad(t, chord, len) {
+  for (const m of chord) for (const det of [-5, 5]) {
+    const o = AC.createOscillator(), g = AC.createGain(); o.type = 'sine'; o.frequency.value = NOTE(m); o.detune.value = det;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.028, t + len * 0.35); g.gain.setValueAtTime(0.028, t + len * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g).connect(music.bus); o.start(t); o.stop(t + len + 0.05);
+  }
+}
+function scheduleMusic() {
+  if (!music || !AC) return;
+  const eighth = 60 / 92 / 2;
+  while (music.next < AC.currentTime + 0.25) {
+    const t = music.next, s = music.step, chord = CHORDS[music.bar % CHORDS.length];
+    if (s % 8 === 0) pad(t, chord, eighth * 8.2);
+    if (s % 8 === 0 || s % 8 === 5) pluck(t, chord[0] - 12, 0.11, 0.9);
+    const beat = s % 2 === 0;
+    if (Math.random() < (beat ? 0.62 : 0.3)) {
+      let n = music.melodyNote + (Math.random() < 0.5 ? -1 : 1) * (Math.random() < 0.75 ? 1 : 2);
+      n = Math.max(0, Math.min(PENTA.length - 1, n)); music.melodyNote = n;
+      pluck(t, PENTA[n], 0.06 + Math.random() * 0.03, 0.55);
+    }
+    music.next += eighth; music.step++;
+    if (music.step % 8 === 0) music.bar++;
+  }
+}
+export function setMusic(on) { if (music && AC) music.master.gain.setTargetAtTime(on ? music.base : 0, AC.currentTime, 0.6); }
 
 export const SFX = {
   throw() { noise(0.25, 0.2, 2500); haptic(12); },

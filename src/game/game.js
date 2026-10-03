@@ -4,7 +4,7 @@ import { makeRock, rockVerdict, rand, clamp, lerp } from './rocks.js';
 import { makeRockMesh, rockRadius, disposeMesh } from '../render/rockmesh.js';
 import { CowFactory, COW_TYPES } from '../render/cow.js';
 import { SHORE_Z, CAM_Z, CAM_Y, sandY } from '../render/world.js';
-import { SFX, audioInit, startAmbient } from '../audio/sfx.js';
+import { SFX, audioInit, startAmbient, startMusic } from '../audio/sfx.js';
 
 export const POCKET_MAX = 8, BEACH_MAX = 16, IDEAL_V = 2.0, LANE = 1.4, AIM_MAX = 60, ROCK_G = 12;
 const BEACH_Z0 = -1.2, BEACH_Z1 = 0.4;
@@ -33,7 +33,7 @@ export class Game {
   }
 
   start(practice) {
-    audioInit(); startAmbient();
+    audioInit(); startAmbient(); startMusic();
     this.practice = !!practice; this.hardReset();
     this.mode = 'play'; this.ui.show(null); this.ui.hudVisible(true);
     this.ui.msg(this.practice ? 'PRACTICE: JUST YOU AND THE LAKE' : 'GRAB SOME ROCKS!', this.world.W / 2, this.world.H * 0.22, { size: 22, color: '#ffd84d', life: 2 });

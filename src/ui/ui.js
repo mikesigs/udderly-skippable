@@ -1,7 +1,7 @@
 // HTML layer: HUD, pocket bar, floating messages, screens, leaderboard and settings persistence.
 import { drawRockIcon, rockLabel } from '../game/rocks.js';
 import { POCKET_MAX } from '../game/game.js';
-import { audio, setAmbient } from '../audio/sfx.js';
+import { audio, setAmbient, setMusic } from '../audio/sfx.js';
 
 const $ = (id) => document.getElementById(id);
 const LS = { scores: 'udderly.scores.v2', name: 'udderly.name', settings: 'udderly.settings.v1' };
@@ -11,7 +11,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 
 export class UI {
   constructor() {
-    this.settings = Object.assign({ sound: true, haptics: true, shadows: true, sharp: false }, load(LS.settings, {}));
+    this.settings = Object.assign({ sound: true, music: true, haptics: true, shadows: true, sharp: false }, load(LS.settings, {}));
     this.lastHud = ''; this.ringR = 80; this.hintT = 0; this.world = null;
     this.slotCanvases = [];
     const slots = $('slots');
@@ -20,8 +20,8 @@ export class UI {
       const c = document.createElement('canvas'); c.width = c.height = 96; b.appendChild(c); slots.appendChild(b);
       this.slotCanvases.push({ b, c });
     }
-    $('optSound').checked = this.settings.sound; $('optHaptics').checked = this.settings.haptics; $('optShadows').checked = this.settings.shadows; $('optSharp').checked = this.settings.sharp;
-    audio.muted = !this.settings.sound; audio.haptics = this.settings.haptics;
+    $('optSound').checked = this.settings.sound; $('optMusic').checked = this.settings.music; $('optHaptics').checked = this.settings.haptics; $('optShadows').checked = this.settings.shadows; $('optSharp').checked = this.settings.sharp;
+    audio.muted = !this.settings.sound; audio.haptics = this.settings.haptics; audio.music = this.settings.music;
   }
   bind(game, world) {
     this.world = world; this.game = game;
@@ -42,7 +42,8 @@ export class UI {
     $('skipSaveBtn').addEventListener('click', () => { $('entry').hidden = true; $('overBoardWrap').hidden = false; this.renderBoard($('overBoard')); });
     $('nameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('saveBtn').click(); } });
     const opt = (id, key, fn) => $(id).addEventListener('change', (e) => { this.settings[key] = e.target.checked; save(LS.settings, this.settings); fn && fn(e.target.checked); });
-    opt('optSound', 'sound', (on) => { audio.muted = !on; setAmbient(on); });
+    opt('optSound', 'sound', (on) => { audio.muted = !on; setAmbient(on); setMusic(on && audio.music); });
+    opt('optMusic', 'music', (on) => { audio.music = on; setMusic(on && !audio.muted); });
     opt('optHaptics', 'haptics', (on) => { audio.haptics = on; });
     opt('optShadows', 'shadows', (on) => world.setQuality({ shadows: on }));
     opt('optSharp', 'sharp', (on) => world.setQuality({ sharp: on }));
