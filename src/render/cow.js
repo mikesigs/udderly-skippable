@@ -115,6 +115,7 @@ export class CowFactory {
     parts.headG.rotation.z = Math.sin(t * 2.2) * 0.06 + (c.charge > 0 ? -0.15 * c.charge : 0);
     parts.tail.rotation.x = Math.sin(t * 7) * 0.35;
     parts.inner.position.y = Math.sin(t * 15) * 0.02;
+    const sq = c.hitT > 0 ? c.hitT / 0.3 : 0; parts.inner.scale.set(1 + sq * 0.25, 1 - sq * 0.3, 1 + sq * 0.25);
     const u = 1 + 0.45 * c.charge;
     parts.udderG.scale.set(u, u, u);
     parts.udderMat.emissiveIntensity = c.charge * 1.2;

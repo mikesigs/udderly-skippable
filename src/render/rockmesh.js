@@ -22,7 +22,7 @@ export function makeRockMesh(rock, gradient) {
   const r = rockRadius(rock);
   geo.scale(r * rock.aspect, r * (0.26 + 0.74 * (1 - rock.flat)), r);
   geo.computeVertexNormals();
-  const mat = new THREE.MeshToonMaterial({ color: new THREE.Color(`hsl(${rock.h} ${Math.min(60, rock.s + 14)}% ${Math.max(8, rock.l - 22)}%)`), gradientMap: gradient });
+  const mat = new THREE.MeshToonMaterial({ color: new THREE.Color(`hsl(${rock.h} ${Math.min(60, rock.s + 18)}% ${Math.max(8, rock.l - 30)}%)`), gradientMap: gradient });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true; mesh.receiveShadow = true;
   mesh.userData.rock = rock;

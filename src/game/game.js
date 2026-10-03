@@ -191,6 +191,7 @@ export class Game {
       this.beachT -= dt; if (this.beach.length < BEACH_MAX && this.beachT <= 0) { this.spawnBeachRock(); this.beachT = 2.2; }
       if (this.aimDeg !== null) this.setAim(this.aimDeg);
     }
+    this.world.setLanes(this.camTarget, play && !this.practice);
     for (const b of this.beach) { b.t += dt; const k = Math.min(1, b.t * 3); b.mesh.scale.setScalar(1 - Math.pow(1 - k, 3)); }
     if (!(play && this.practice)) this.updateCows(dt, play);
     if (this.handMesh) { this.handMesh.rotation.y += dt * 0.6; this.handMesh.position.y = -0.46 + Math.sin(this.world.time * 3) * 0.012; }

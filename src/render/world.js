@@ -91,7 +91,7 @@ export class World {
     this.sunDir = new THREE.Vector3(0.45, 0.5, -0.74).normalize();
     this.time = 0;
 
-    this.buildLights(); this.buildSky(); this.buildWater(); this.buildBeach(); this.buildFarShore(); this.buildClouds();
+    this.buildLights(); this.buildSky(); this.buildWater(); this.buildBeach(); this.buildFarShore(); this.buildClouds(); this.buildLanes();
     this.resize();
   }
 
@@ -133,12 +133,12 @@ export class World {
 
   buildBeach() {
     const W = 70, D = 16, segZ = 24;
-    const geo = new THREE.PlaneGeometry(W, D, 2, segZ); geo.rotateX(-Math.PI / 2);
+    const geo = new THREE.PlaneGeometry(W, D, 28, segZ); geo.rotateX(-Math.PI / 2);
     const pos = geo.attributes.position, colors = new Float32Array(pos.count * 3);
     const dry = new THREE.Color('#f3dca8'), wet = new THREE.Color('#c9a773'), c = new THREE.Color();
     for (let i = 0; i < pos.count; i++) {
       const z = pos.getZ(i) + (SHORE_Z + D / 2);
-      pos.setY(i, sandY(z) + (Math.random() - 0.5) * 0.01);
+      pos.setY(i, sandY(z));
       const wetness = clamp(1 - (z - SHORE_Z) / 1.4, 0, 1);
       c.copy(dry).lerp(wet, wetness * wetness);
       colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
@@ -209,6 +209,19 @@ export class World {
     }
   }
 
+  buildLanes() {
+    this.lanes = [];
+    const geo = new THREE.RingGeometry(0.42, 0.55, 40).rotateX(-Math.PI / 2);
+    for (const x of [-1.4, 0, 1.4]) {
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25, depthWrite: false }));
+      m.position.set(x, sandY(SHORE_Z + 1.1) + 0.015, SHORE_Z + 1.1); m.renderOrder = 2;
+      this.scene.add(m); this.lanes.push(m);
+    }
+  }
+  setLanes(active, visible) {
+    if (!this.lanes) return;
+    this.lanes.forEach((m, i) => { const x = [-1.4, 0, 1.4][i]; m.visible = visible; m.material.opacity = Math.abs(x - active) < 0.1 ? 0.75 : 0.22; m.material.color.set(Math.abs(x - active) < 0.1 ? '#ffe066' : '#ffffff'); });
+  }
   setQuality({ shadows, sharp }) {
     if (shadows !== undefined && shadows !== this.renderer.shadowMap.enabled) {
       this.renderer.shadowMap.enabled = shadows;
